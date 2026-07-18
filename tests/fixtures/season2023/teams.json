@@ -1,0 +1,24 @@
+[
+  {
+    "id": 61,
+    "school": "Georgia",
+    "mascot": "Bulldogs",
+    "abbreviation": "UGA",
+    "conference": "SEC",
+    "classification": "fbs",
+    "color": "#ba0c2f",
+    "alternateColor": "#000000",
+    "logos": ["http://a.espncdn.com/i/teamlogos/ncaa/500/61.png"]
+  },
+  {
+    "id": 333,
+    "school": "Alabama",
+    "mascot": "Crimson Tide",
+    "abbreviation": "ALA",
+    "conference": "SEC",
+    "classification": "fbs",
+    "color": "#9e1b32",
+    "alternateColor": "#828a8f",
+    "logos": ["http://a.espncdn.com/i/teamlogos/ncaa/500/333.png"]
+  }
+]

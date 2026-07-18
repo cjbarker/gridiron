@@ -1,0 +1,23 @@
+[
+  {
+    "id": 401520281,
+    "teams": [
+      {
+        "team": "Georgia",
+        "stats": [
+          { "category": "totalYards", "stat": "412" },
+          { "category": "firstDowns", "stat": "22" },
+          { "category": "possessionTime", "stat": "32:15" }
+        ]
+      },
+      {
+        "team": "Alabama",
+        "stats": [
+          { "category": "totalYards", "stat": "364" },
+          { "category": "firstDowns", "stat": "19" },
+          { "category": "possessionTime", "stat": "27:45" }
+        ]
+      }
+    ]
+  }
+]

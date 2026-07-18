@@ -1,0 +1,48 @@
+[
+  {
+    "id": 401520281,
+    "teams": [
+      {
+        "team": "Georgia",
+        "categories": [
+          {
+            "name": "passing",
+            "types": [
+              {
+                "name": "YDS",
+                "athletes": [{ "id": 4429795, "name": "Carson Beck", "stat": "306" }]
+              },
+              {
+                "name": "TD",
+                "athletes": [{ "id": 4429795, "name": "Carson Beck", "stat": "1" }]
+              }
+            ]
+          },
+          {
+            "name": "receiving",
+            "types": [
+              {
+                "name": "YDS",
+                "athletes": [{ "id": 4432648, "name": "Brock Bowers", "stat": "88" }]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "team": "Alabama",
+        "categories": [
+          {
+            "name": "rushing",
+            "types": [
+              {
+                "name": "YDS",
+                "athletes": [{ "id": 4567048, "name": "Jase McClellan", "stat": "72" }]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

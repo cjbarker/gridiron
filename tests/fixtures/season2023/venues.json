@@ -1,0 +1,11 @@
+[
+  {
+    "id": 3657,
+    "name": "Mercedes-Benz Stadium",
+    "city": "Atlanta",
+    "state": "GA",
+    "capacity": 71000,
+    "grass": false,
+    "dome": true
+  }
+]

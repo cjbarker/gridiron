@@ -1,0 +1,36 @@
+[
+  {
+    "id": 4015202810001,
+    "gameId": 401520281,
+    "offense": "Georgia",
+    "defense": "Alabama",
+    "driveNumber": 1,
+    "scoring": true,
+    "startPeriod": 1,
+    "startYardline": 25,
+    "startYardsToGoal": 75,
+    "endPeriod": 1,
+    "endYardline": 100,
+    "endYardsToGoal": 0,
+    "plays": 8,
+    "yards": 75,
+    "driveResult": "TD"
+  },
+  {
+    "id": 4015202810002,
+    "gameId": 401520281,
+    "offense": "Alabama",
+    "defense": "Georgia",
+    "driveNumber": 2,
+    "scoring": true,
+    "startPeriod": 1,
+    "startYardline": 30,
+    "startYardsToGoal": 70,
+    "endPeriod": 1,
+    "endYardline": 78,
+    "endYardsToGoal": 22,
+    "plays": 6,
+    "yards": 48,
+    "driveResult": "FG"
+  }
+]

@@ -1,0 +1,23 @@
+[
+  {
+    "id": 401520281,
+    "season": 2023,
+    "week": 1,
+    "seasonType": "regular",
+    "startDate": "2023-09-02T23:30:00.000Z",
+    "completed": true,
+    "neutralSite": true,
+    "conferenceGame": true,
+    "attendance": 70044,
+    "venueId": 3657,
+    "homeId": 61,
+    "homeTeam": "Georgia",
+    "homeConference": "SEC",
+    "homePoints": 27,
+    "awayId": 333,
+    "awayTeam": "Alabama",
+    "awayConference": "SEC",
+    "awayPoints": 24,
+    "excitementIndex": 8.7
+  }
+]

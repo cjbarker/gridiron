@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ game.away_team }} @ {{ game.home_team }} — {{ game.season }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted"><a href="/?season={{ game.season }}">← {{ game.season }} games</a></p>
+  <h2>
+    {{ game.away_team }} <span class="score">{{ game.away_points }}</span>
+    <span class="muted">at</span>
+    {{ game.home_team }} <span class="score">{{ game.home_points }}</span>
+  </h2>
+  <p class="muted">
+    Season {{ game.season }} · Week {{ game.week }} · {{ game.season_type }}
+    {% if game.neutral_site %}· neutral site{% endif %}
+    {% if game.excitement_index %}· excitement {{ '%.1f'|format(game.excitement_index) }}{% endif %}
+  </p>
+</div>
+
+<div class="card">
+  <h3>Scoring plays <span class="muted">({{ scoring_plays|length }})</span></h3>
+  <table>
+    <thead><tr><th>Qtr</th><th>Clock</th><th>Team</th><th>Type</th><th>Pts</th><th>Yd line</th><th>Detail</th></tr></thead>
+    <tbody>
+      {% for p in scoring_plays %}
+      <tr>
+        <td>{{ p.period }}</td>
+        <td class="muted">{{ p.clock }}</td>
+        <td>{{ p.offense }}</td>
+        <td><span class="pill">{{ p.play_type }}</span></td>
+        <td class="score">{{ p.points_scored }}</td>
+        <td>{{ p.yards_to_goal }}</td>
+        <td class="muted">{{ p.play_text }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>All plays <span class="muted">({{ plays|length }})</span></h3>
+  <table>
+    <thead><tr><th>Dr</th><th>Off</th><th>Dn&amp;Dist</th><th>YTG</th><th>Gain</th><th>Type</th></tr></thead>
+    <tbody>
+      {% for p in plays %}
+      <tr>
+        <td class="muted">{{ p.drive_number }}</td>
+        <td>{{ p.offense }}</td>
+        <td>{% if p.down %}{{ p.down }} &amp; {{ p.distance }}{% endif %}</td>
+        <td>{{ p.yards_to_goal }}</td>
+        <td>{{ p.yards_gained }}</td>
+        <td class="muted">{{ p.play_type }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

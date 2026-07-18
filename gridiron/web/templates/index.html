@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Gridiron — {{ season }}{% endblock %}
+{% block content %}
+<form method="get" action="/" class="card">
+  <label for="season" class="muted">Season</label>
+  <select id="season" name="season" onchange="this.form.submit()">
+    {% for s in seasons %}
+      <option value="{{ s }}" {% if s == season %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button type="submit">Go</button></noscript>
+</form>
+
+<div class="card">
+  <h2>{{ season }} games <span class="muted">({{ games|length }})</span></h2>
+  {% if games %}
+  <table>
+    <thead><tr><th>Wk</th><th>Away</th><th></th><th>Home</th><th></th><th></th></tr></thead>
+    <tbody>
+      {% for g in games %}
+      <tr>
+        <td class="muted">{{ g.week }}</td>
+        <td>{{ g.away_team }}</td>
+        <td class="score">{{ g.away_points if g.away_points is not none else '' }}</td>
+        <td>{{ g.home_team }}</td>
+        <td class="score">{{ g.home_points if g.home_points is not none else '' }}</td>
+        <td><a href="/games/{{ g.id }}">box &amp; plays →</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No games ingested yet. Run the ingest pipeline, then refresh.</p>
+  {% endif %}
+</div>
+{% endblock %}
