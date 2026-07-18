@@ -165,24 +165,30 @@ def to_drive(d: dict[str, Any]) -> Drive:
     )
 
 
-def to_play(d: dict[str, Any]) -> Play:
-    clock = pick(d, "clock", default={}) or {}
+def to_play(d: dict[str, Any], season: int | None = None) -> Play:
+    """Normalize a play from either the CFBD REST API or a cfbfastR parquet row.
+
+    The two sources name columns differently (e.g. CFBD ``offense`` /
+    ``yardLine`` vs cfbfastR ``pos_team`` / ``yards_to_goal`` and a flattened
+    ``clock.minutes``), so every accessor lists both spellings.
+    """
     play_type = pick(d, "playType", "play_type")
     scoring = pick(d, "scoring", default=False)
     points = points_for_play_type(play_type)
     return Play(
-        id=_int(pick(d, "id")),
+        id=_int(pick(d, "id", "id_play")),
         game_id=_int(pick(d, "gameId", "game_id")),
+        season=season if season is not None else _int(pick(d, "season", "year")),
         drive_id=_int(pick(d, "driveId", "drive_id")),
         drive_number=_int(pick(d, "driveNumber", "drive_number")),
-        play_number=_int(pick(d, "playNumber", "play_number")),
-        offense=pick(d, "offense"),
-        defense=pick(d, "defense"),
-        offense_score=_int(pick(d, "offenseScore", "offense_score")),
-        defense_score=_int(pick(d, "defenseScore", "defense_score")),
+        play_number=_int(pick(d, "playNumber", "play_number", "game_play_number")),
+        offense=pick(d, "offense", "pos_team", "offense_play"),
+        defense=pick(d, "defense", "def_pos_team", "defense_play"),
+        offense_score=_int(pick(d, "offenseScore", "offense_score", "pos_team_score")),
+        defense_score=_int(pick(d, "defenseScore", "defense_score", "def_pos_team_score")),
         period=_int(pick(d, "period")),
-        clock_minutes=_int(clock.get("minutes") if isinstance(clock, dict) else None),
-        clock_seconds=_int(clock.get("seconds") if isinstance(clock, dict) else None),
+        clock_minutes=_int(_clock_part(d, "minutes")),
+        clock_seconds=_int(_clock_part(d, "seconds")),
         down=_int(pick(d, "down")),
         distance=_int(pick(d, "distance")),
         yard_line=_int(pick(d, "yardLine", "yard_line", "yardline")),
@@ -194,7 +200,50 @@ def to_play(d: dict[str, Any]) -> Play:
         points_scored=points if (scoring or points) else 0,
         ppa=_float(pick(d, "ppa")),
         epa=_float(pick(d, "EPA", "epa")),
-        wp=_float(pick(d, "wp", "wpa", "winProbability")),
+        wp=_float(pick(d, "wp", "wp_before", "wpa", "winProbability")),
+    )
+
+
+def _clock_part(d: dict[str, Any], part: str) -> Any:
+    """Clock is nested (CFBD ``clock: {minutes, seconds}``) or flattened with a
+    dotted key (cfbfastR ``clock.minutes``). Handle both."""
+    clock = d.get("clock")
+    if isinstance(clock, dict) and clock.get(part) is not None:
+        return clock[part]
+    return pick(d, f"clock.{part}", f"clock_{part}")
+
+
+def to_game_stub(year: int, game_id: int, plays: list[dict[str, Any]]) -> Game:
+    """Synthesize a minimal Game from a group of parquet play rows.
+
+    Used by the offline backfill (no CFBD API): teams come from home/away (or the
+    possession teams), and final points are the max score seen for each side.
+    A later API ingest ``merge``es richer data onto the same game id.
+    """
+    home = away = None
+    week = None
+    home_pts = away_pts = 0
+    for p in plays:
+        week = week or _int(pick(p, "week"))
+        home = home or pick(p, "home", "home_team")
+        away = away or pick(p, "away", "away_team")
+        off = pick(p, "offense", "pos_team", "offense_play")
+        os_ = _int(pick(p, "offenseScore", "offense_score", "pos_team_score")) or 0
+        ds_ = _int(pick(p, "defenseScore", "defense_score", "def_pos_team_score")) or 0
+        # Attribute each side's running score to home/away.
+        if off and home and off == home:
+            home_pts, away_pts = max(home_pts, os_), max(away_pts, ds_)
+        elif off and away and off == away:
+            away_pts, home_pts = max(away_pts, os_), max(home_pts, ds_)
+    return Game(
+        id=game_id,
+        season=year,
+        week=week,
+        season_type="regular",
+        home_team=home,
+        away_team=away,
+        home_points=home_pts,
+        away_points=away_pts,
     )
 
 

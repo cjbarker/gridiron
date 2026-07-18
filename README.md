@@ -65,6 +65,29 @@ python -m gridiron.ingest.cli --init-db --year 2023 \
 uvicorn gridiron.api.main:app --reload
 ```
 
+## Bulk historical backfill (plays with EPA/WP)
+
+The CFBD `/plays` API is per-week and rate-limited, and only carries `ppa`. For
+history, load plays from the cfbfastR **parquet** (2002–present, EPA/WP included)
+while games/drives/rankings come from the API:
+
+```bash
+# Plays from parquet, the rest from CFBD (needs CFBD_API_KEY):
+python -m gridiron.ingest.cli --start 2002 --end 2024 --plays-source parquet
+
+# Fully offline — synthesize games from the parquet, no key required:
+python -m gridiron.ingest.cli --start 2014 --end 2024 \
+    --plays-source parquet --stub-games
+
+# Confirm a season's parquet columns before loading (no DB writes):
+python -m gridiron.ingest.cli --year 2023 --inspect-parquet
+```
+
+The load is idempotent per season (delete-by-season + bulk insert). Once plays
+carry EPA/WP, the `ppa-leaders` and `ppa-by-down` views use EPA instead of `ppa`.
+`--stub-games` writes minimal games (teams + final score); a later API run
+enriches those same rows.
+
 ## Pages
 
 - `/` — season game browser · `/games/{id}` — box score & play-by-play
@@ -97,5 +120,5 @@ pytest          # runs fully offline against the JSON fixtures
 - **M1 (done):** ingestion pipeline + schema + analytics core + offline tests.
 - **M2 (done):** roster ingestion, team & player pages, Plotly charts, and advanced
   metrics (success rate, explosiveness, PPA/EPA by down).
-- **M3:** bulk parquet backfill to 2002 (EPA/WP), season splits & filters,
-  current-season auto-refresh, and matchup/comparison views.
+- **M3 (in progress):** bulk parquet backfill to 2002 with EPA/WP **(done)**;
+  next — season splits & filters, current-season auto-refresh, matchup/comparison views.

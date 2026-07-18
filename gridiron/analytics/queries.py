@@ -28,8 +28,10 @@ _FP_BUCKETS = [
 
 
 def _season_filter(stmt, season: int | None):
+    # plays.season is denormalized at ingest, so filter directly (indexed) instead
+    # of joining games — far cheaper across many seasons of play-by-play.
     if season is not None:
-        stmt = stmt.where(Play.game_id.in_(select(Game.id).where(Game.season == season)))
+        stmt = stmt.where(Play.season == season)
     return stmt
 
 

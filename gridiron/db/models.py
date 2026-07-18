@@ -116,6 +116,9 @@ class Play(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), index=True)
+    # Denormalized season (set at ingest) so analytics filter plays directly by
+    # year instead of joining games — a real win at multi-million-row scale.
+    season: Mapped[int | None] = mapped_column(Integer, index=True)
     drive_id: Mapped[int | None] = mapped_column(ForeignKey("drives.id"), index=True)
     drive_number: Mapped[int | None] = mapped_column(Integer)
     play_number: Mapped[int | None] = mapped_column(Integer)

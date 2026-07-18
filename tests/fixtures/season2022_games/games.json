@@ -1,0 +1,19 @@
+[
+  {
+    "id": 401403910,
+    "season": 2022,
+    "week": 1,
+    "seasonType": "regular",
+    "startDate": "2022-09-03T23:30:00.000Z",
+    "completed": true,
+    "neutralSite": false,
+    "homeId": 194,
+    "homeTeam": "Ohio State",
+    "homeConference": "Big Ten",
+    "homePoints": 21,
+    "awayId": 87,
+    "awayTeam": "Notre Dame",
+    "awayConference": "FBS Independents",
+    "awayPoints": 10
+  }
+]

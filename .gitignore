@@ -18,6 +18,8 @@ env/
 *.sqlite3
 data/
 *.parquet
+# ...but keep the small committed test fixture parquet(s)
+!tests/fixtures/**/*.parquet
 
 # Tooling
 .pytest_cache/

@@ -9,15 +9,16 @@ duplicates.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from sqlalchemy import select
+from sqlalchemy import delete, insert, select
 from sqlalchemy.orm import Session
 
-from gridiron.db.models import Drive, PlayerGameStat, Ranking, TeamGameStat
+from gridiron.db.models import Drive, Game, Play, PlayerGameStat, Ranking, TeamGameStat
 from gridiron.db.session import session_scope
 from gridiron.ingest import transforms as tf
-from gridiron.ingest.sources import POSTSEASON, REGULAR, DataSource
+from gridiron.ingest.sources import POSTSEASON, REGULAR, DataSource, load_pbp_parquet
 
 
 @dataclass
@@ -40,8 +41,17 @@ def ingest_season(
     season_types: tuple[str, ...] = (REGULAR, POSTSEASON),
     with_stats: bool = True,
     with_rosters: bool = True,
+    plays_source: str = "api",
+    parquet_loader: Callable[[int], list[dict]] | None = None,
+    stub_games: bool = False,
 ) -> IngestReport:
-    """Ingest a full season into the DB. Returns counts of rows upserted."""
+    """Ingest a full season into the DB. Returns counts of rows upserted.
+
+    ``plays_source="parquet"`` loads plays from the cfbfastR bulk parquet (with
+    EPA/WP) instead of the CFBD ``/plays`` API. With ``stub_games=True`` the
+    parquet step also synthesizes any missing games, so a backfill can run with no
+    CFBD key at all.
+    """
     report = IngestReport(year=year)
     with session_scope() as session:
         _ingest_reference(source, year, session, report)
@@ -52,8 +62,13 @@ def ingest_season(
             _ingest_games(source, year, st, session, report, game_ids)
         for st in season_types:
             _ingest_drives(source, year, st, session, report, game_ids)
-        for st in season_types:
-            _ingest_plays(source, year, st, session, report, game_ids)
+        if plays_source == "parquet":
+            _ingest_plays_parquet(
+                year, session, report, game_ids, loader=parquet_loader, stub_games=stub_games
+            )
+        else:
+            for st in season_types:
+                _ingest_plays(source, year, st, session, report, game_ids)
         if with_stats:
             _ingest_box_scores(source, year, season_types, session, report, game_ids)
         _ingest_rankings(source, year, session, report)
@@ -130,7 +145,7 @@ def _ingest_plays(
     known_drives = set(session.execute(select(Drive.id)).scalars().all())
     for week in source.weeks(year, season_type):
         for raw in source.plays(year, week, season_type):
-            p = tf.to_play(raw)
+            p = tf.to_play(raw, season=year)
             if p.id is None or p.game_id not in game_ids:
                 continue
             if p.drive_id is not None and p.drive_id not in known_drives:
@@ -138,6 +153,73 @@ def _ingest_plays(
             session.merge(p)
             report.bump("plays")
         session.flush()
+
+
+def _ingest_plays_parquet(
+    year: int,
+    session: Session,
+    report: IngestReport,
+    game_ids: set[int],
+    *,
+    loader: Callable[[int], list[dict]] | None = None,
+    stub_games: bool = False,
+    batch_size: int = 5000,
+) -> None:
+    """Load a season's plays from the cfbfastR bulk parquet (with EPA/WP).
+
+    Idempotent by season: existing plays for ``year`` are deleted, then the parquet
+    rows are bulk-inserted. With ``stub_games`` any game not already present is
+    synthesized from its plays so the load works without the CFBD API.
+    """
+    rows = (loader or load_pbp_parquet)(year)
+    if not rows:
+        return
+
+    if stub_games:
+        by_game: dict[int, list[dict]] = {}
+        for r in rows:
+            gid = tf._int(tf.pick(r, "gameId", "game_id"))
+            if gid is not None:
+                by_game.setdefault(gid, []).append(r)
+        existing = set(
+            session.execute(select(Game.id).where(Game.id.in_(by_game))).scalars().all()
+        )
+        for gid, plays in by_game.items():
+            if gid not in existing:
+                session.merge(tf.to_game_stub(year, gid, plays))
+                report.bump("games")
+            game_ids.add(gid)
+        session.flush()
+
+    known_drives = set(session.execute(select(Drive.id)).scalars().all())
+    # Replace this season's plays for clean idempotency, then bulk insert.
+    session.execute(delete(Play).where(Play.season == year))
+
+    mappings: list[dict] = []
+    seen: set[int] = set()
+    for raw in rows:
+        p = tf.to_play(raw, season=year)
+        if p.id is None or p.game_id not in game_ids or p.id in seen:
+            continue
+        seen.add(p.id)
+        if p.drive_id is not None and p.drive_id not in known_drives:
+            p.drive_id = None
+        mappings.append(_play_mapping(p))
+        if len(mappings) >= batch_size:
+            session.execute(insert(Play), mappings)
+            report.bump("plays", len(mappings))
+            mappings = []
+    if mappings:
+        session.execute(insert(Play), mappings)
+        report.bump("plays", len(mappings))
+    session.flush()
+
+
+_PLAY_COLUMNS = [c.name for c in Play.__table__.columns]
+
+
+def _play_mapping(p: Play) -> dict:
+    return {col: getattr(p, col) for col in _PLAY_COLUMNS}
 
 
 def _ingest_box_scores(
