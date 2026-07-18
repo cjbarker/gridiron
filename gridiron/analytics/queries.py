@@ -11,10 +11,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import Integer, case, func, select
+from sqlalchemy import Integer, and_, case, func, or_, select
 from sqlalchemy.orm import Session
 
-from gridiron.db.models import Game, Play
+from gridiron.db.models import Game, Play, Player, PlayerGameStat, Ranking
 
 # Field-position buckets by yards-to-goal (distance to opponent end zone).
 _FP_BUCKETS = [
@@ -33,10 +33,21 @@ def _season_filter(stmt, season: int | None):
     return stmt
 
 
-def scoring_by_field_position(session: Session, season: int | None = None) -> list[dict[str, Any]]:
+def _play_scope(stmt, season: int | None, team: str | None):
+    """Apply season + optional offense-team filters to a Play query."""
+    stmt = _season_filter(stmt, season)
+    if team is not None:
+        stmt = stmt.where(Play.offense == team)
+    return stmt
+
+
+def scoring_by_field_position(
+    session: Session, season: int | None = None, team: str | None = None
+) -> list[dict[str, Any]]:
     """Count and total points of scoring plays, bucketed by field position.
 
     Answers the core question: *from what yardage on the field are points scored?*
+    Pass ``team`` to scope to one offense (used by team pages).
     """
     bucket = case(
         *[
@@ -55,14 +66,16 @@ def scoring_by_field_position(session: Session, season: int | None = None) -> li
         .where(Play.scoring.is_(True))
         .group_by(bucket)
     )
-    stmt = _season_filter(stmt, season)
+    stmt = _play_scope(stmt, season, team)
     order = {label: i for i, (_, _, label) in enumerate(_FP_BUCKETS)}
     rows = [dict(r._mapping) for r in session.execute(stmt)]
     rows.sort(key=lambda r: order.get(r["bucket"], 99))
     return rows
 
 
-def scoring_type_breakdown(session: Session, season: int | None = None) -> list[dict[str, Any]]:
+def scoring_type_breakdown(
+    session: Session, season: int | None = None, team: str | None = None
+) -> list[dict[str, Any]]:
     """Breakdown of scoring plays by point value (6=TD, 3=FG, 2=safety/2pt, 1=PAT)."""
     label = case(
         (Play.points_scored == 6, "Touchdown (6)"),
@@ -82,12 +95,12 @@ def scoring_type_breakdown(session: Session, season: int | None = None) -> list[
         .group_by(label)
         .order_by(func.sum(Play.points_scored).desc())
     )
-    stmt = _season_filter(stmt, season)
+    stmt = _play_scope(stmt, season, team)
     return [dict(r._mapping) for r in session.execute(stmt)]
 
 
 def field_goal_success_by_distance(
-    session: Session, season: int | None = None
+    session: Session, season: int | None = None, team: str | None = None
 ) -> list[dict[str, Any]]:
     """Field-goal make rate bucketed by distance (yards-to-goal)."""
     made = func.sum(case((Play.play_type == "Field Goal Good", 1), else_=0)).label("made")
@@ -105,7 +118,7 @@ def field_goal_success_by_distance(
         .where(Play.play_type.in_(["Field Goal Good", "Field Goal Missed"]))
         .group_by(bucket)
     )
-    stmt = _season_filter(stmt, season)
+    stmt = _play_scope(stmt, season, team)
     order = {label: i for i, (_, _, label) in enumerate(_FP_BUCKETS)}
     out = []
     for r in session.execute(stmt):
@@ -195,4 +208,263 @@ def team_scoring_summary(session: Session, season: int, limit: int = 25) -> list
         .order_by(func.sum(unioned.c.pf).desc())
         .limit(limit)
     )
+    return [dict(r._mapping) for r in session.execute(stmt)]
+
+
+# --- Team dossier ---------------------------------------------------------
+
+def list_teams_with_data(session: Session, season: int) -> list[dict[str, Any]]:
+    """Teams that appear in a season's schedule (home or away), de-duplicated."""
+    home = select(Game.home_team.label("team")).where(Game.season == season)
+    away = select(Game.away_team.label("team")).where(Game.season == season)
+    sub = home.union(away).subquery()
+    stmt = select(sub.c.team).where(sub.c.team.isnot(None)).order_by(sub.c.team)
+    return [{"team": r[0]} for r in session.execute(stmt)]
+
+
+def team_game_log(session: Session, team: str, season: int) -> list[dict[str, Any]]:
+    """Per-game log for a team: opponent, home/away, score, and result."""
+    stmt = (
+        select(Game)
+        .where(Game.season == season, or_(Game.home_team == team, Game.away_team == team))
+        .order_by(Game.week, Game.start_date, Game.id)
+    )
+    out: list[dict[str, Any]] = []
+    for g in session.execute(stmt).scalars():
+        is_home = g.home_team == team
+        pf = g.home_points if is_home else g.away_points
+        pa = g.away_points if is_home else g.home_points
+        result = None
+        if pf is not None and pa is not None:
+            result = "W" if pf > pa else "L" if pf < pa else "T"
+        out.append(
+            {
+                "game_id": g.id,
+                "week": g.week,
+                "opponent": g.away_team if is_home else g.home_team,
+                "home_away": "home" if is_home else "away",
+                "points_for": pf,
+                "points_against": pa,
+                "result": result,
+            }
+        )
+    return out
+
+
+def team_season_summary(session: Session, team: str, season: int) -> dict[str, Any]:
+    """Record (W-L-T), points for/against, and per-game scoring for a team."""
+    log = team_game_log(session, team, season)
+    played = [g for g in log if g["result"] is not None]
+    wins = sum(1 for g in played if g["result"] == "W")
+    losses = sum(1 for g in played if g["result"] == "L")
+    ties = sum(1 for g in played if g["result"] == "T")
+    pf = sum(g["points_for"] for g in played)
+    pa = sum(g["points_against"] for g in played)
+    n = len(played)
+    return {
+        "team": team,
+        "season": season,
+        "games": n,
+        "wins": wins,
+        "losses": losses,
+        "ties": ties,
+        "record": f"{wins}-{losses}" + (f"-{ties}" if ties else ""),
+        "points_for": pf,
+        "points_against": pa,
+        "ppg": round(pf / n, 1) if n else None,
+        "papg": round(pa / n, 1) if n else None,
+    }
+
+
+def team_rankings_history(session: Session, team: str, season: int) -> list[dict[str, Any]]:
+    """A team's poll ranking by week (AP Top 25 etc.)."""
+    stmt = (
+        select(Ranking.week, Ranking.poll, Ranking.rank)
+        .where(Ranking.season == season, Ranking.team == team)
+        .order_by(Ranking.poll, Ranking.week)
+    )
+    return [dict(r._mapping) for r in session.execute(stmt)]
+
+
+# --- Player views ---------------------------------------------------------
+
+def player_search(
+    session: Session, q: str | None = None, season: int | None = None, limit: int = 50
+) -> list[dict[str, Any]]:
+    """Find players that have box-score data, by (partial) name."""
+    stmt = select(
+        PlayerGameStat.player_id, PlayerGameStat.player, PlayerGameStat.team
+    ).distinct()
+    if q:
+        stmt = stmt.where(PlayerGameStat.player.ilike(f"%{q}%"))
+    if season is not None:
+        stmt = stmt.where(PlayerGameStat.season == season)
+    stmt = stmt.where(PlayerGameStat.player_id.isnot(None)).order_by(PlayerGameStat.player).limit(limit)
+    return [
+        {"player_id": r[0], "player": r[1], "team": r[2]} for r in session.execute(stmt)
+    ]
+
+
+def player_profile(session: Session, player_id: int) -> dict[str, Any] | None:
+    """Bio/roster info from the players table, if a roster has been ingested."""
+    p = session.get(Player, player_id)
+    if p is None:
+        # Fall back to whatever the box scores know.
+        row = session.execute(
+            select(PlayerGameStat.player, PlayerGameStat.team)
+            .where(PlayerGameStat.player_id == player_id)
+            .limit(1)
+        ).first()
+        if row is None:
+            return None
+        return {"id": player_id, "name": row[0], "team": row[1]}
+    name = " ".join(x for x in [p.first_name, p.last_name] if x)
+    return {
+        "id": p.id,
+        "name": name,
+        "team": p.team,
+        "position": p.position,
+        "jersey": p.jersey,
+        "height": p.height,
+        "weight": p.weight,
+        "year": p.year,
+        "hometown": ", ".join(x for x in [p.home_city, p.home_state] if x) or None,
+    }
+
+
+def player_season_stats(
+    session: Session, player_id: int, season: int | None = None
+) -> list[dict[str, Any]]:
+    """Aggregate a player's box-score stats across games.
+
+    Values are stored as strings (EAV), so we sum numeric ones (YDS, TD, ...) and
+    otherwise report the number of games the stat appears in.
+    """
+    stmt = select(
+        PlayerGameStat.category, PlayerGameStat.stat_type, PlayerGameStat.stat
+    ).where(PlayerGameStat.player_id == player_id)
+    if season is not None:
+        stmt = stmt.where(PlayerGameStat.season == season)
+
+    agg: dict[tuple[str, str], dict[str, Any]] = {}
+    for category, stat_type, stat in session.execute(stmt):
+        key = (category, stat_type)
+        entry = agg.setdefault(
+            key, {"category": category, "stat_type": stat_type, "games": 0, "total": 0.0, "_numeric": True}
+        )
+        entry["games"] += 1
+        try:
+            entry["total"] += float(stat)
+        except (TypeError, ValueError):
+            entry["_numeric"] = False
+
+    out = []
+    for entry in agg.values():
+        numeric = entry.pop("_numeric")
+        total = entry.pop("total")
+        entry["total"] = round(total, 1) if numeric else None
+        out.append(entry)
+    out.sort(key=lambda e: (e["category"], e["stat_type"]))
+    return out
+
+
+def player_game_log(
+    session: Session, player_id: int, season: int | None = None
+) -> list[dict[str, Any]]:
+    """Per-game stat lines for a player, with game context."""
+    stmt = (
+        select(
+            PlayerGameStat.game_id,
+            Game.week,
+            PlayerGameStat.team,
+            PlayerGameStat.category,
+            PlayerGameStat.stat_type,
+            PlayerGameStat.stat,
+        )
+        .join(Game, Game.id == PlayerGameStat.game_id)
+        .where(PlayerGameStat.player_id == player_id)
+        .order_by(Game.week, PlayerGameStat.game_id, PlayerGameStat.category)
+    )
+    if season is not None:
+        stmt = stmt.where(PlayerGameStat.season == season)
+
+    games: dict[int, dict[str, Any]] = {}
+    for game_id, week, team, category, stat_type, stat in session.execute(stmt):
+        g = games.setdefault(
+            game_id, {"game_id": game_id, "week": week, "team": team, "stats": {}}
+        )
+        g["stats"][f"{category} {stat_type}"] = stat
+    return list(games.values())
+
+
+# --- Advanced efficiency metrics -----------------------------------------
+
+_SUCCESS = case(
+    (and_(Play.down == 1, Play.yards_gained >= 0.5 * Play.distance), 1),
+    (and_(Play.down == 2, Play.yards_gained >= 0.7 * Play.distance), 1),
+    (and_(Play.down.in_([3, 4]), Play.yards_gained >= Play.distance), 1),
+    else_=0,
+)
+
+
+def _run_pass_scope(stmt):
+    """Restrict to scrimmage plays with a valid down/distance/yardage."""
+    return stmt.where(
+        Play.down.in_([1, 2, 3, 4]),
+        Play.distance.isnot(None),
+        Play.yards_gained.isnot(None),
+    )
+
+
+def success_rate(
+    session: Session, season: int | None = None, team: str | None = None, min_plays: int = 1
+) -> list[dict[str, Any]]:
+    """Offensive success rate per team (see `_SUCCESS` for the down thresholds)."""
+    stmt = _run_pass_scope(
+        select(
+            Play.offense.label("team"),
+            func.count().label("plays"),
+            func.round(func.avg(_SUCCESS), 4).label("success_rate"),
+        )
+    ).group_by(Play.offense).having(func.count() >= min_plays).order_by(func.avg(_SUCCESS).desc())
+    stmt = _play_scope(stmt, season, team)
+    return [dict(r._mapping) for r in session.execute(stmt)]
+
+
+def explosiveness(
+    session: Session, season: int | None = None, team: str | None = None, min_plays: int = 1
+) -> list[dict[str, Any]]:
+    """Share of a team's plays gaining 15+ yards (an 'explosive' play)."""
+    explosive = case((Play.yards_gained >= 15, 1), else_=0)
+    stmt = (
+        select(
+            Play.offense.label("team"),
+            func.count().label("plays"),
+            func.round(func.avg(explosive), 4).label("explosive_rate"),
+        )
+        .where(Play.yards_gained.isnot(None), Play.offense.isnot(None))
+        .group_by(Play.offense)
+        .having(func.count() >= min_plays)
+        .order_by(func.avg(explosive).desc())
+    )
+    stmt = _play_scope(stmt, season, team)
+    return [dict(r._mapping) for r in session.execute(stmt)]
+
+
+def ppa_by_down(
+    session: Session, season: int | None = None, team: str | None = None
+) -> list[dict[str, Any]]:
+    """Average PPA/EPA grouped by down (uses `epa` when present, else `ppa`)."""
+    metric = func.coalesce(Play.epa, Play.ppa)
+    stmt = (
+        select(
+            Play.down,
+            func.count().label("plays"),
+            func.round(func.avg(metric), 4).label("avg_ppa"),
+        )
+        .where(metric.isnot(None), Play.down.in_([1, 2, 3, 4]))
+        .group_by(Play.down)
+        .order_by(Play.down)
+    )
+    stmt = _play_scope(stmt, season, team)
     return [dict(r._mapping) for r in session.execute(stmt)]

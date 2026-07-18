@@ -94,7 +94,6 @@ def points_for_play_type(play_type: str | None) -> int:
 def to_team(d: dict[str, Any]) -> Team:
     logos = pick(d, "logos", default=None)
     logo = logos[0] if isinstance(logos, list) and logos else None
-    loc = pick(d, "location", default={}) or {}
     return Team(
         id=_int(pick(d, "id")),
         school=pick(d, "school", "team", default="Unknown"),

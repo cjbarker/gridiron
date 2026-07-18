@@ -65,12 +65,26 @@ python -m gridiron.ingest.cli --init-db --year 2023 \
 uvicorn gridiron.api.main:app --reload
 ```
 
+## Pages
+
+- `/` — season game browser · `/games/{id}` — box score & play-by-play
+- `/teams` · `/teams/{team}?season=2023` — team dossier: record, scoring trend,
+  field-position scoring, play-type mix, PPA-by-down and efficiency charts, game log
+- `/players?q=…` · `/players/{id}` — player profile, season totals, game log
+
+Charts are [Plotly](https://plotly.com/python/); the JS bundle is served from the
+installed `plotly` package at `/vendor/plotly.min.js`, so charts work offline with
+no CDN or build step.
+
 ## Key API endpoints
 
 - `GET /api/games?season=2023` — season schedule/results
 - `GET /api/games/{id}` — game, drives, play-by-play, box score
+- `GET /api/teams/{team}?season=2023` — summary, game log, rankings history
+- `GET /api/players?q=…&season=2023` · `GET /api/players/{id}` — profile, season stats, game log
 - `GET /api/analytics/scoring-by-field-position?season=2023`
 - `GET /api/analytics/scoring-types` · `/fg-success` · `/play-type-mix` · `/ppa-leaders` · `/team-scoring`
+- `GET /api/analytics/success-rate` · `/explosiveness` · `/ppa-by-down` (params: `season`, optional `team`)
 
 ## Tests
 
@@ -81,6 +95,7 @@ pytest          # runs fully offline against the JSON fixtures
 ## Roadmap
 
 - **M1 (done):** ingestion pipeline + schema + analytics core + offline tests.
-- **M2:** richer team/player pages, season splits, charts (Plotly).
-- **M3:** advanced analytics (success rate, explosiveness, EPA by down/distance),
-  bulk parquet backfill to 2002, current-season auto-refresh.
+- **M2 (done):** roster ingestion, team & player pages, Plotly charts, and advanced
+  metrics (success rate, explosiveness, PPA/EPA by down).
+- **M3:** bulk parquet backfill to 2002 (EPA/WP), season splits & filters,
+  current-season auto-refresh, and matchup/comparison views.

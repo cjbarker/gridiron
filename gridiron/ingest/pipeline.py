@@ -14,16 +14,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from gridiron.db.models import (
-    Drive,
-    Game,
-    Play,
-    PlayerGameStat,
-    Ranking,
-    Team,
-    TeamGameStat,
-    Venue,
-)
+from gridiron.db.models import Drive, PlayerGameStat, Ranking, TeamGameStat
 from gridiron.db.session import session_scope
 from gridiron.ingest import transforms as tf
 from gridiron.ingest.sources import POSTSEASON, REGULAR, DataSource
@@ -48,11 +39,14 @@ def ingest_season(
     *,
     season_types: tuple[str, ...] = (REGULAR, POSTSEASON),
     with_stats: bool = True,
+    with_rosters: bool = True,
 ) -> IngestReport:
     """Ingest a full season into the DB. Returns counts of rows upserted."""
     report = IngestReport(year=year)
     with session_scope() as session:
         _ingest_reference(source, year, session, report)
+        if with_rosters:
+            _ingest_rosters(source, year, session, report)
         game_ids: set[int] = set()
         for st in season_types:
             _ingest_games(source, year, st, session, report, game_ids)
@@ -77,6 +71,15 @@ def _ingest_reference(source: DataSource, year: int, session: Session, report: I
         if t.id is not None:
             session.merge(t)
             report.bump("teams")
+    session.flush()
+
+
+def _ingest_rosters(source: DataSource, year: int, session: Session, report: IngestReport) -> None:
+    for raw in source.rosters(year):
+        p = tf.to_player(raw)
+        if p.id is not None:
+            session.merge(p)
+            report.bump("players")
     session.flush()
 
 

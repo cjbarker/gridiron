@@ -38,6 +38,7 @@ class DataSource(Protocol):
     def player_game_stats(self, year: int, week: int, season_type: str) -> list[dict[str, Any]]: ...
     def team_game_stats(self, year: int, week: int, season_type: str) -> list[dict[str, Any]]: ...
     def rankings(self, year: int) -> list[dict[str, Any]]: ...
+    def rosters(self, year: int) -> list[dict[str, Any]]: ...
     def weeks(self, year: int, season_type: str) -> list[int]: ...
 
 
@@ -97,6 +98,17 @@ class CFBDSource:
     def rankings(self, year: int) -> list[dict[str, Any]]:
         return self._get("/rankings", year=year)
 
+    def rosters(self, year: int) -> list[dict[str, Any]]:
+        """Full-season rosters. CFBD /roster is per-team, so iterate the season's
+        FBS teams and concatenate (each athlete record already carries ``team``)."""
+        out: list[dict[str, Any]] = []
+        for team in self.teams(year):
+            school = team.get("school") or team.get("team")
+            if not school:
+                continue
+            out.extend(self._get("/roster", year=year, team=school))
+        return out
+
     def weeks(self, year: int, season_type: str) -> list[int]:
         """Distinct weeks that actually have games (avoids blind 1..20 loops)."""
         games = self.games(year, season_type)
@@ -146,6 +158,9 @@ class FixtureSource:
 
     def rankings(self, year: int) -> list[dict[str, Any]]:
         return self._load("rankings")
+
+    def rosters(self, year: int) -> list[dict[str, Any]]:
+        return self._load("roster")
 
     def weeks(self, year: int, season_type: str) -> list[int]:
         # Return one nominal week; the fixture source ignores week filtering.

@@ -1,0 +1,41 @@
+[
+  {
+    "id": 4429795,
+    "firstName": "Carson",
+    "lastName": "Beck",
+    "team": "Georgia",
+    "position": "QB",
+    "height": 76,
+    "weight": 220,
+    "jersey": 15,
+    "year": 3,
+    "homeCity": "Jacksonville",
+    "homeState": "FL"
+  },
+  {
+    "id": 4432648,
+    "firstName": "Brock",
+    "lastName": "Bowers",
+    "team": "Georgia",
+    "position": "TE",
+    "height": 76,
+    "weight": 240,
+    "jersey": 19,
+    "year": 3,
+    "homeCity": "Napa",
+    "homeState": "CA"
+  },
+  {
+    "id": 4567048,
+    "firstName": "Jase",
+    "lastName": "McClellan",
+    "team": "Alabama",
+    "position": "RB",
+    "height": 71,
+    "weight": 212,
+    "jersey": 2,
+    "year": 4,
+    "homeCity": "Aledo",
+    "homeState": "TX"
+  }
+]

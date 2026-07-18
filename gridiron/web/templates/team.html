@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ team }} — {{ season }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted"><a href="/teams?season={{ season }}">← {{ season }} teams</a></p>
+  <h2>{{ team }} <span class="muted">{{ season }}</span></h2>
+  <div class="stat-grid">
+    <div class="stat"><div class="n">{{ summary.record }}</div><div class="l">Record</div></div>
+    <div class="stat"><div class="n">{{ summary.points_for }}</div><div class="l">Points for</div></div>
+    <div class="stat"><div class="n">{{ summary.points_against }}</div><div class="l">Points against</div></div>
+    <div class="stat"><div class="n">{{ summary.ppg if summary.ppg is not none else '—' }}</div><div class="l">Pts / game</div></div>
+    <div class="stat"><div class="n">{{ summary.papg if summary.papg is not none else '—' }}</div><div class="l">Allowed / game</div></div>
+  </div>
+  {% if rankings %}
+  <p class="muted" style="margin-top:12px;">
+    Rankings:
+    {% for r in rankings %}<span class="pill">{{ r.poll }} wk{{ r.week }}: #{{ r.rank }}</span> {% endfor %}
+  </p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Analytics</h3>
+  <div class="chart-grid">
+    <div class="chart" id="chart-trend"></div>
+    <div class="chart" id="chart-field_position"></div>
+    <div class="chart" id="chart-play_mix"></div>
+    <div class="chart" id="chart-ppa_down"></div>
+    <div class="chart" id="chart-efficiency"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Game log</h3>
+  <table>
+    <thead><tr><th>Wk</th><th></th><th>Opponent</th><th>Result</th><th>Score</th></tr></thead>
+    <tbody>
+      {% for g in game_log %}
+      <tr>
+        <td class="muted">{{ g.week }}</td>
+        <td class="muted">{{ 'vs' if g.home_away == 'home' else '@' }}</td>
+        <td><a href="/teams/{{ g.opponent }}?season={{ season }}">{{ g.opponent }}</a></td>
+        <td>
+          {% if g.result == 'W' %}<span class="win">W</span>
+          {% elif g.result == 'L' %}<span class="loss">L</span>
+          {% else %}{{ g.result or '—' }}{% endif %}
+        </td>
+        <td class="score"><a href="/games/{{ g.game_id }}">{{ g.points_for }}–{{ g.points_against }}</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/vendor/plotly.min.js"></script>
+<script>
+  const FIGS = {{ figures|tojson }};
+  for (const [key, spec] of Object.entries(FIGS)) {
+    const el = document.getElementById('chart-' + key);
+    if (!el) continue;
+    const fig = JSON.parse(spec);
+    Plotly.newPlot(el, fig.data, fig.layout, {displayModeBar: false, responsive: true});
+  }
+</script>
+{% endblock %}

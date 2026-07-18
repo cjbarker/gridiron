@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Teams — {{ season }}{% endblock %}
+{% block content %}
+<form method="get" action="/teams" class="card">
+  <label for="season" class="muted">Season</label>
+  <select id="season" name="season" onchange="this.form.submit()">
+    {% for s in seasons %}
+      <option value="{{ s }}" {% if s == season %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button type="submit">Go</button></noscript>
+</form>
+
+<div class="card">
+  <h2>{{ season }} teams <span class="muted">({{ teams|length }})</span></h2>
+  {% if teams %}
+  <div class="stat-grid">
+    {% for t in teams %}
+      <div class="stat"><a href="/teams/{{ t.team }}?season={{ season }}">{{ t.team }}</a></div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">No teams for this season yet. Run the ingest pipeline.</p>
+  {% endif %}
+</div>
+{% endblock %}

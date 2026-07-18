@@ -44,5 +44,28 @@
         ]
       }
     ]
+  },
+  {
+    "id": 401520282,
+    "teams": [
+      {
+        "team": "Georgia",
+        "categories": [
+          {
+            "name": "passing",
+            "types": [
+              {
+                "name": "YDS",
+                "athletes": [{ "id": 4429795, "name": "Carson Beck", "stat": "212" }]
+              },
+              {
+                "name": "TD",
+                "athletes": [{ "id": 4429795, "name": "Carson Beck", "stat": "2" }]
+              }
+            ]
+          }
+        ]
+      }
+    ]
   }
 ]

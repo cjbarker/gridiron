@@ -32,5 +32,22 @@
     "plays": 6,
     "yards": 48,
     "driveResult": "FG"
+  },
+  {
+    "id": 4015202820001,
+    "gameId": 401520282,
+    "offense": "Georgia",
+    "defense": "Ball State",
+    "driveNumber": 1,
+    "scoring": true,
+    "startPeriod": 1,
+    "startYardline": 20,
+    "startYardsToGoal": 80,
+    "endPeriod": 1,
+    "endYardline": 100,
+    "endYardsToGoal": 0,
+    "plays": 9,
+    "yards": 80,
+    "driveResult": "TD"
   }
 ]

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Players{% endblock %}
+{% block content %}
+<form method="get" action="/players" class="card">
+  <input type="search" name="q" placeholder="Search players…" value="{{ query or '' }}" autofocus>
+  {% if season %}<input type="hidden" name="season" value="{{ season }}">{% endif %}
+  <button type="submit">Search</button>
+</form>
+
+<div class="card">
+  {% if query %}
+    <h2>Results for “{{ query }}” <span class="muted">({{ results|length }})</span></h2>
+    {% if results %}
+    <table>
+      <thead><tr><th>Player</th><th>Team</th></tr></thead>
+      <tbody>
+        {% for p in results %}
+        <tr>
+          <td><a href="/players/{{ p.player_id }}{% if season %}?season={{ season }}{% endif %}">{{ p.player }}</a></td>
+          <td class="muted">{{ p.team }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No players matched. Player search covers athletes with box-score data.</p>
+    {% endif %}
+  {% else %}
+    <p class="muted">Type a name above to search players.</p>
+  {% endif %}
+</div>
+{% endblock %}

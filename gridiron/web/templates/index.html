@@ -20,9 +20,9 @@
       {% for g in games %}
       <tr>
         <td class="muted">{{ g.week }}</td>
-        <td>{{ g.away_team }}</td>
+        <td><a href="/teams/{{ g.away_team }}?season={{ season }}">{{ g.away_team }}</a></td>
         <td class="score">{{ g.away_points if g.away_points is not none else '' }}</td>
-        <td>{{ g.home_team }}</td>
+        <td><a href="/teams/{{ g.home_team }}?season={{ season }}">{{ g.home_team }}</a></td>
         <td class="score">{{ g.home_points if g.home_points is not none else '' }}</td>
         <td><a href="/games/{{ g.id }}">box &amp; plays →</a></td>
       </tr>

@@ -22,15 +22,17 @@ Pages (HTML):
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from gridiron.analytics import charts as ch
 from gridiron.analytics import queries as q
 from gridiron.db.models import (
     Drive,
@@ -50,6 +52,26 @@ app = FastAPI(title="Gridiron", description="College football stats & analysis")
 _static = _HERE / "web" / "static"
 if _static.exists():
     app.mount("/static", StaticFiles(directory=str(_static)), name="static")
+
+
+@lru_cache
+def _plotly_js() -> str:
+    from plotly.offline import get_plotlyjs
+
+    return get_plotlyjs()
+
+
+@app.get("/vendor/plotly.min.js")
+def plotly_js() -> Response:
+    """Serve the plotly.js bundle shipped inside the `plotly` package.
+
+    Avoids a CDN dependency or a separate build/vendor step — charts work offline.
+    """
+    return Response(
+        content=_plotly_js(),
+        media_type="application/javascript",
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 # --- JSON API -------------------------------------------------------------
@@ -168,6 +190,62 @@ def api_team_scoring(season: int, db: Session = Depends(get_db)) -> list[dict]:
     return q.team_scoring_summary(db, season)
 
 
+@app.get("/api/analytics/success-rate")
+def api_success_rate(
+    season: int | None = None, team: str | None = None, db: Session = Depends(get_db)
+) -> list[dict]:
+    return q.success_rate(db, season, team)
+
+
+@app.get("/api/analytics/explosiveness")
+def api_explosiveness(
+    season: int | None = None, team: str | None = None, db: Session = Depends(get_db)
+) -> list[dict]:
+    return q.explosiveness(db, season, team)
+
+
+@app.get("/api/analytics/ppa-by-down")
+def api_ppa_by_down(
+    season: int | None = None, team: str | None = None, db: Session = Depends(get_db)
+) -> list[dict]:
+    return q.ppa_by_down(db, season, team)
+
+
+@app.get("/api/teams/{team}")
+def api_team(team: str, season: int, db: Session = Depends(get_db)) -> dict:
+    summary = q.team_season_summary(db, team, season)
+    if summary["games"] == 0 and not q.team_game_log(db, team, season):
+        raise HTTPException(status_code=404, detail="team/season not found")
+    return {
+        "summary": summary,
+        "game_log": q.team_game_log(db, team, season),
+        "rankings": q.team_rankings_history(db, team, season),
+    }
+
+
+@app.get("/api/players")
+def api_players(
+    q_: str | None = Query(default=None, alias="q"),
+    season: int | None = None,
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    return q.player_search(db, q_, season)
+
+
+@app.get("/api/players/{player_id}")
+def api_player(
+    player_id: int, season: int | None = None, db: Session = Depends(get_db)
+) -> dict:
+    profile = q.player_profile(db, player_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="player not found")
+    return {
+        "profile": profile,
+        "season_stats": q.player_season_stats(db, player_id, season),
+        "game_log": q.player_game_log(db, player_id, season),
+    }
+
+
 # --- HTML pages -----------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
@@ -214,6 +292,90 @@ def page_game(request: Request, game_id: int, db: Session = Depends(get_db)) -> 
             "game": _game_summary(game),
             "plays": [_play_dict(p) for p in plays],
             "scoring_plays": [_play_dict(p) for p in scoring_plays],
+        },
+    )
+
+
+def _current_season(db: Session, season: int | None) -> int | None:
+    if season is not None:
+        return season
+    return db.execute(select(func.max(Game.season))).scalar()
+
+
+@app.get("/teams", response_class=HTMLResponse)
+def page_teams(request: Request, season: int | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
+    seasons = (
+        db.execute(select(Game.season).distinct().order_by(Game.season.desc())).scalars().all()
+    )
+    season = _current_season(db, season)
+    teams = q.list_teams_with_data(db, season) if season is not None else []
+    return templates.TemplateResponse(
+        request=request,
+        name="teams.html",
+        context={"seasons": seasons, "season": season, "teams": teams},
+    )
+
+
+@app.get("/teams/{team}", response_class=HTMLResponse)
+def page_team(
+    request: Request, team: str, season: int | None = None, db: Session = Depends(get_db)
+) -> HTMLResponse:
+    season = _current_season(db, season)
+    game_log = q.team_game_log(db, team, season) if season is not None else []
+    if not game_log:
+        raise HTTPException(status_code=404, detail="team/season not found")
+    figures = {
+        "trend": ch.team_points_trend_fig(db, team, season),
+        "field_position": ch.scoring_field_position_fig(db, season, team),
+        "play_mix": ch.play_type_mix_fig(db, season, team),
+        "ppa_down": ch.ppa_by_down_fig(db, season, team),
+        "efficiency": ch.success_explosive_fig(db, season, team),
+    }
+    return templates.TemplateResponse(
+        request=request,
+        name="team.html",
+        context={
+            "team": team,
+            "season": season,
+            "summary": q.team_season_summary(db, team, season),
+            "game_log": game_log,
+            "rankings": q.team_rankings_history(db, team, season),
+            "figures": figures,
+        },
+    )
+
+
+@app.get("/players", response_class=HTMLResponse)
+def page_players(
+    request: Request,
+    q_: str | None = Query(default=None, alias="q"),
+    season: int | None = None,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    season = _current_season(db, season)
+    results = q.player_search(db, q_, season) if q_ else []
+    return templates.TemplateResponse(
+        request=request,
+        name="players.html",
+        context={"season": season, "query": q_, "results": results},
+    )
+
+
+@app.get("/players/{player_id}", response_class=HTMLResponse)
+def page_player(
+    request: Request, player_id: int, season: int | None = None, db: Session = Depends(get_db)
+) -> HTMLResponse:
+    profile = q.player_profile(db, player_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="player not found")
+    return templates.TemplateResponse(
+        request=request,
+        name="player.html",
+        context={
+            "profile": profile,
+            "season": season,
+            "season_stats": q.player_season_stats(db, player_id, season),
+            "game_log": q.player_game_log(db, player_id, season),
         },
     )
 

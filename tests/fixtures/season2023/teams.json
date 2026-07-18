@@ -20,5 +20,16 @@
     "color": "#9e1b32",
     "alternateColor": "#828a8f",
     "logos": ["http://a.espncdn.com/i/teamlogos/ncaa/500/333.png"]
+  },
+  {
+    "id": 2050,
+    "school": "Ball State",
+    "mascot": "Cardinals",
+    "abbreviation": "BALL",
+    "conference": "Mid-American",
+    "classification": "fbs",
+    "color": "#da0000",
+    "alternateColor": "#ffffff",
+    "logos": ["http://a.espncdn.com/i/teamlogos/ncaa/500/2050.png"]
   }
 ]

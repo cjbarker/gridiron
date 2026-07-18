@@ -47,6 +47,9 @@ def main(argv: list[str] | None = None) -> int:
         "--no-stats", action="store_true", help="Skip player/team box-score ingestion."
     )
     parser.add_argument(
+        "--no-rosters", action="store_true", help="Skip roster (players table) ingestion."
+    )
+    parser.add_argument(
         "--init-db", action="store_true", help="Create tables before ingesting."
     )
     args = parser.parse_args(argv)
@@ -56,7 +59,9 @@ def main(argv: list[str] | None = None) -> int:
 
     source = _build_source(args)
     for year in _years(args):
-        report = ingest_season(source, year, with_stats=not args.no_stats)
+        report = ingest_season(
+            source, year, with_stats=not args.no_stats, with_rosters=not args.no_rosters
+        )
         print(report)
     return 0
 

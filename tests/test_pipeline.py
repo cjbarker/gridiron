@@ -8,6 +8,7 @@ from gridiron.db.models import (
     Drive,
     Game,
     Play,
+    Player,
     PlayerGameStat,
     Ranking,
     Team,
@@ -24,6 +25,7 @@ def _counts():
             "games": s.scalar(select(func.count()).select_from(Game)),
             "drives": s.scalar(select(func.count()).select_from(Drive)),
             "plays": s.scalar(select(func.count()).select_from(Play)),
+            "players": s.scalar(select(func.count()).select_from(Player)),
             "player_game_stats": s.scalar(select(func.count()).select_from(PlayerGameStat)),
             "team_game_stats": s.scalar(select(func.count()).select_from(TeamGameStat)),
             "rankings": s.scalar(select(func.count()).select_from(Ranking)),
@@ -33,12 +35,13 @@ def _counts():
 def test_ingest_populates_all_tables(db_env, fixture_source):
     ingest_season(fixture_source, 2023)
     c = _counts()
-    assert c["teams"] == 2
-    assert c["games"] == 1
-    assert c["drives"] == 2
-    assert c["plays"] == 5
-    assert c["player_game_stats"] == 4  # 2 UGA passing + 1 UGA recv + 1 ALA rush
-    assert c["team_game_stats"] == 6  # 3 stats x 2 teams
+    assert c["teams"] == 3
+    assert c["games"] == 2
+    assert c["drives"] == 3
+    assert c["plays"] == 8
+    assert c["players"] == 3  # roster ingestion fills the players table
+    assert c["player_game_stats"] == 6  # game1: 4, game2: Beck YDS + TD
+    assert c["team_game_stats"] == 6  # 3 stats x 2 teams (game1 only)
     assert c["rankings"] == 2
 
 
@@ -60,4 +63,5 @@ def test_scoring_play_has_points_and_yardline(db_env, fixture_source):
         assert td.yards_to_goal == 15
         assert td.scoring is True
         total_points = s.scalar(select(func.sum(Play.points_scored)))
-        assert total_points == 10  # 6 + 1 + 3
+        # game1: TD 6 + PAT 1 + FG 3 = 10; game2: TD 6 + PAT 1 = 7
+        assert total_points == 17

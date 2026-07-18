@@ -19,5 +19,26 @@
     "awayConference": "SEC",
     "awayPoints": 24,
     "excitementIndex": 8.7
+  },
+  {
+    "id": 401520282,
+    "season": 2023,
+    "week": 2,
+    "seasonType": "regular",
+    "startDate": "2023-09-09T19:30:00.000Z",
+    "completed": true,
+    "neutralSite": false,
+    "conferenceGame": false,
+    "attendance": 92746,
+    "venueId": 3657,
+    "homeId": 61,
+    "homeTeam": "Georgia",
+    "homeConference": "SEC",
+    "homePoints": 45,
+    "awayId": 2050,
+    "awayTeam": "Ball State",
+    "awayConference": "Mid-American",
+    "awayPoints": 3,
+    "excitementIndex": 1.2
   }
 ]

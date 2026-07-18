@@ -20,14 +20,29 @@
     .score { font-variant-numeric: tabular-nums; font-weight:700; }
     .muted { color:var(--muted); }
     .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#1d2a42; font-size:12px; }
-    select { background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:6px 10px; }
+    select, input[type=search] { background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:6px 10px; }
+    nav a { margin-right:14px; color:var(--muted); }
+    nav a:hover { color:var(--accent); }
+    .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:12px; }
+    .stat { background:#1a2438; border:1px solid var(--line); border-radius:10px; padding:12px; }
+    .stat .n { font-size:22px; font-weight:700; }
+    .stat .l { color:var(--muted); font-size:12px; }
+    .chart-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; }
+    .chart { min-height:320px; }
+    .win { color:#38d39f; font-weight:700; } .loss { color:#e0568b; font-weight:700; }
   </style>
 </head>
 <body>
   <header>
     <h1><a href="/">🏈 Gridiron</a></h1>
+    <nav>
+      <a href="/">Games</a>
+      <a href="/teams">Teams</a>
+      <a href="/players">Players</a>
+    </nav>
     <span class="muted">college football stats &amp; analysis</span>
   </header>
   <main>{% block content %}{% endblock %}</main>
+  {% block scripts %}{% endblock %}
 </body>
 </html>
