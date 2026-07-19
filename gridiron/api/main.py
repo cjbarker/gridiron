@@ -238,6 +238,16 @@ def api_game_lines(game_id: int, db: Session = Depends(get_db)) -> list[dict]:
     return q.game_betting_lines(db, game_id)
 
 
+@app.get("/api/games/{game_id}/win-probability")
+def api_game_wp(game_id: int, db: Session = Depends(get_db)) -> list[dict]:
+    return q.game_win_probability(db, game_id)
+
+
+@app.get("/api/analytics/wp-leaders")
+def api_wp_leaders(season: int | None = None, db: Session = Depends(get_db)) -> list[dict]:
+    return q.wp_leaders(db, season)
+
+
 @app.get("/api/analytics/ats-record")
 def api_ats_record(team: str, season: int, db: Session = Depends(get_db)) -> dict:
     return q.team_ats_record(db, team, season)
@@ -246,6 +256,11 @@ def api_ats_record(team: str, season: int, db: Session = Depends(get_db)) -> dic
 @app.get("/api/teams/{team}/trends")
 def api_team_trends(team: str, db: Session = Depends(get_db)) -> list[dict]:
     return q.team_season_history(db, team)
+
+
+@app.get("/api/standings")
+def api_standings(season: int, conference: str, db: Session = Depends(get_db)) -> list[dict]:
+    return q.conference_standings(db, season, conference)
 
 
 @app.get("/api/teams/{team}")
@@ -381,6 +396,10 @@ def page_game(request: Request, game_id: int, db: Session = Depends(get_db)) -> 
         .all()
     )
     scoring_plays = [p for p in plays if p.scoring]
+    wp_rows = q.game_win_probability(db, game_id)
+    wp_figure = (
+        ch.win_probability_fig(db, game_id, game.home_team, game.away_team) if wp_rows else None
+    )
     return templates.TemplateResponse(
         request=request,
         name="game.html",
@@ -389,6 +408,7 @@ def page_game(request: Request, game_id: int, db: Session = Depends(get_db)) -> 
             "plays": [_play_dict(p) for p in plays],
             "scoring_plays": [_play_dict(p) for p in scoring_plays],
             "betting_lines": q.game_betting_lines(db, game_id),
+            "wp_figure": wp_figure,
         },
     )
 
@@ -410,6 +430,56 @@ def page_teams(request: Request, season: int | None = None, db: Session = Depend
         request=request,
         name="teams.html",
         context={"seasons": seasons, "season": season, "teams": teams},
+    )
+
+
+@app.get("/standings", response_class=HTMLResponse)
+def page_standings(
+    request: Request,
+    season: int | None = None,
+    conference: str | None = None,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    seasons = (
+        db.execute(select(Game.season).distinct().order_by(Game.season.desc())).scalars().all()
+    )
+    season = _current_season(db, season)
+    conferences = q.list_conferences(db, season) if season is not None else []
+    if conference is None and conferences:
+        conference = conferences[0]
+    standings = (
+        q.conference_standings(db, season, conference)
+        if season is not None and conference
+        else []
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="standings.html",
+        context={
+            "seasons": seasons,
+            "season": season,
+            "conferences": conferences,
+            "conference": conference,
+            "standings": standings,
+        },
+    )
+
+
+@app.get("/leaders", response_class=HTMLResponse)
+def page_leaders(request: Request, season: int | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
+    seasons = (
+        db.execute(select(Game.season).distinct().order_by(Game.season.desc())).scalars().all()
+    )
+    season = _current_season(db, season)
+    figures = {}
+    ppa = []
+    if season is not None:
+        figures["wp"] = ch.wp_leaders_fig(db, season)
+        ppa = q.ppa_leaders(db, season, min_plays=1)
+    return templates.TemplateResponse(
+        request=request,
+        name="leaders.html",
+        context={"seasons": seasons, "season": season, "figures": figures, "ppa_leaders": ppa},
     )
 
 

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Standings — {{ conference }} {{ season }}{% endblock %}
+{% block content %}
+<form method="get" action="/standings" class="card">
+  <label for="season" class="muted">Season</label>
+  <select id="season" name="season" onchange="this.form.submit()">
+    {% for s in seasons %}
+      <option value="{{ s }}" {% if s == season %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <label for="conference" class="muted">Conference</label>
+  <select id="conference" name="conference" onchange="this.form.submit()">
+    {% for c in conferences %}
+      <option value="{{ c }}" {% if c == conference %}selected{% endif %}>{{ c }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button type="submit">Go</button></noscript>
+</form>
+
+<div class="card">
+  <h2>{{ conference }} <span class="muted">{{ season }}</span></h2>
+  {% if standings %}
+  <table>
+    <thead><tr><th>#</th><th>Team</th><th>Conf</th><th>Overall</th><th>PF</th><th>PA</th></tr></thead>
+    <tbody>
+      {% for t in standings %}
+      <tr>
+        <td class="muted">{{ loop.index }}</td>
+        <td><a href="/teams/{{ t.team }}?season={{ season }}">{{ t.team }}</a></td>
+        <td class="score">{{ t.conf_record }}</td>
+        <td class="score">{{ t.overall_record }}</td>
+        <td class="muted">{{ t.points_for }}</td>
+        <td class="muted">{{ t.points_against }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No standings for this selection yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

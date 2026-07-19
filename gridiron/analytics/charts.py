@@ -283,3 +283,44 @@ def team_trends_fig(session: Session, team: str) -> str:
     fig.update_xaxes(title_text="Season", dtick=1)
     fig.update_yaxes(title_text="Points / game")
     return fig_to_json(_theme(fig, f"{team} — season-over-season"))
+
+
+def win_probability_fig(session: Session, game_id: int, home: str, away: str) -> str:
+    """Game-flow win-probability line for the home team (0-100%)."""
+    rows = q.game_win_probability(session, game_id)
+    if not rows:
+        return _empty("Win probability", "No win-probability data")
+    fig = go.Figure(
+        go.Scatter(
+            x=[r["index"] for r in rows],
+            y=[round(r["home_wp"] * 100, 1) for r in rows],
+            mode="lines",
+            line=dict(color=_ACCENT, width=2),
+            hovertemplate="%{y}%% " + home + "<extra></extra>",
+            fill="tozeroy",
+            fillcolor="rgba(78,161,255,0.12)",
+        )
+    )
+    fig.add_hline(y=50, line_dash="dot", line_color=_MUTED)
+    fig.update_xaxes(title_text="Play")
+    fig.update_yaxes(title_text=f"{home} win %", range=[0, 100])
+    return fig_to_json(_theme(fig, f"Win probability — {away} @ {home}"))
+
+
+def wp_leaders_fig(session: Session, season: int, limit: int = 15) -> str:
+    """Bar of teams by average in-game win probability."""
+    rows = q.wp_leaders(session, season, min_plays=1, limit=limit)
+    if not rows:
+        return _empty("Win-probability leaders")
+    rows = sorted(rows, key=lambda r: r["avg_wp"])
+    fig = go.Figure(
+        go.Bar(
+            x=[round(r["avg_wp"] * 100, 1) for r in rows],
+            y=[r["team"] for r in rows],
+            orientation="h",
+            marker_color=_ACCENT,
+            hovertemplate="%{y}<br>%{x}%% avg WP<extra></extra>",
+        )
+    )
+    fig.update_xaxes(title_text="Avg win %", range=[0, 100])
+    return fig_to_json(_theme(fig, "Average in-game win probability"))

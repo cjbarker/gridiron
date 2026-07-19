@@ -15,6 +15,13 @@
   </p>
 </div>
 
+{% if wp_figure %}
+<div class="card">
+  <h3>Win probability</h3>
+  <div class="chart" id="chart-wp"></div>
+</div>
+{% endif %}
+
 {% if betting_lines %}
 <div class="card">
   <h3>Betting lines</h3>
@@ -72,4 +79,13 @@
     </tbody>
   </table>
 </div>
+{% endblock %}
+{% block scripts %}
+{% if wp_figure %}
+<script src="/vendor/plotly.min.js"></script>
+<script>
+  const fig = JSON.parse({{ wp_figure|tojson }});
+  Plotly.newPlot(document.getElementById('chart-wp'), fig.data, fig.layout, {displayModeBar: false, responsive: true});
+</script>
+{% endif %}
 {% endblock %}

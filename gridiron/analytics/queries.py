@@ -758,3 +758,140 @@ def team_season_history(session: Session, team: str) -> list[dict[str, Any]]:
         .all()
     )
     return [team_season_summary(session, team, s) for s in seasons]
+
+
+# --- Win probability ------------------------------------------------------
+
+def game_win_probability(session: Session, game_id: int) -> list[dict[str, Any]]:
+    """Per-play win probability for the HOME team, in game order.
+
+    ``plays.wp`` is stored from the possessing team's perspective (cfbfastR
+    ``wp_before``), so it's flipped to ``1 - wp`` on the away team's plays.
+    """
+    game = session.get(Game, game_id)
+    if game is None:
+        return []
+    rows = (
+        session.execute(
+            select(Play)
+            .where(Play.game_id == game_id, Play.wp.isnot(None))
+            .order_by(Play.drive_number, Play.play_number, Play.id)
+        )
+        .scalars()
+        .all()
+    )
+    out = []
+    for i, p in enumerate(rows):
+        home_wp = p.wp if p.offense == game.home_team else 1.0 - p.wp
+        out.append(
+            {
+                "index": i,
+                "period": p.period,
+                "clock": f"{p.clock_minutes or 0:02d}:{p.clock_seconds or 0:02d}",
+                "offense": p.offense,
+                "home_wp": round(home_wp, 4),
+                "play_text": p.play_text,
+            }
+        )
+    return out
+
+
+def wp_leaders(
+    session: Session,
+    season: int | None = None,
+    min_plays: int = 1,
+    limit: int = 25,
+    flt: PlayFilter | None = None,
+) -> list[dict[str, Any]]:
+    """Teams ranked by average in-game win probability while on offense."""
+    stmt = (
+        select(
+            Play.offense.label("team"),
+            func.count().label("plays"),
+            func.round(func.avg(Play.wp), 4).label("avg_wp"),
+        )
+        .where(Play.wp.isnot(None), Play.offense.isnot(None))
+        .group_by(Play.offense)
+        .having(func.count() >= min_plays)
+        .order_by(func.avg(Play.wp).desc())
+        .limit(limit)
+    )
+    stmt = _scope(stmt, season, None, flt)
+    return [dict(r._mapping) for r in session.execute(stmt)]
+
+
+# --- Conference standings -------------------------------------------------
+
+def list_conferences(session: Session, season: int) -> list[str]:
+    """Conferences that appear in a season's schedule."""
+    home = select(Game.home_conference.label("c")).where(Game.season == season)
+    away = select(Game.away_conference.label("c")).where(Game.season == season)
+    sub = home.union(away).subquery()
+    return [
+        r[0]
+        for r in session.execute(
+            select(sub.c.c).where(sub.c.c.isnot(None)).order_by(sub.c.c)
+        )
+    ]
+
+
+def conference_standings(
+    session: Session, season: int, conference: str
+) -> list[dict[str, Any]]:
+    """Standings for a conference: conference + overall records, ranked."""
+    games = (
+        session.execute(select(Game).where(Game.season == season)).scalars().all()
+    )
+    members: set[str] = set()
+    for g in games:
+        if g.home_conference == conference and g.home_team:
+            members.add(g.home_team)
+        if g.away_conference == conference and g.away_team:
+            members.add(g.away_team)
+
+    standings = []
+    for team in members:
+        cw = cl = ow = ol = pf = pa = 0
+        for g in games:
+            if team not in (g.home_team, g.away_team):
+                continue
+            is_home = g.home_team == team
+            tp = g.home_points if is_home else g.away_points
+            op = g.away_points if is_home else g.home_points
+            if tp is None or op is None:
+                continue
+            pf += tp
+            pa += op
+            if tp > op:
+                ow += 1
+                cw += 1 if g.conference_game else 0
+            elif tp < op:
+                ol += 1
+                cl += 1 if g.conference_game else 0
+        standings.append(
+            {
+                "team": team,
+                "conf_wins": cw,
+                "conf_losses": cl,
+                "conf_record": f"{cw}-{cl}",
+                "overall_wins": ow,
+                "overall_losses": ol,
+                "overall_record": f"{ow}-{ol}",
+                "points_for": pf,
+                "points_against": pa,
+            }
+        )
+
+    def _pct(w: int, l_: int) -> float:
+        n = w + l_
+        return w / n if n else 0.0
+
+    standings.sort(
+        key=lambda s: (
+            _pct(s["conf_wins"], s["conf_losses"]),
+            _pct(s["overall_wins"], s["overall_losses"]),
+            s["overall_wins"],
+        ),
+        reverse=True,
+    )
+    return standings

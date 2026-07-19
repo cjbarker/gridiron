@@ -19,7 +19,8 @@
     "playType": "Passing Touchdown",
     "playText": "Carson Beck pass complete to Brock Bowers for 15 yds for a TD",
     "scoring": true,
-    "ppa": 3.9
+    "ppa": 3.9,
+    "wp": 0.55
   },
   {
     "id": 401520281101849102,
@@ -39,7 +40,8 @@
     "playType": "Extra Point Good",
     "playText": "Peyton Woodring extra point good",
     "scoring": true,
-    "ppa": 0.9
+    "ppa": 0.9,
+    "wp": 0.60
   },
   {
     "id": 401520281101849201,
@@ -61,7 +63,8 @@
     "playType": "Rush",
     "playText": "Jase McClellan run for 5 yds",
     "scoring": false,
-    "ppa": -0.4
+    "ppa": -0.4,
+    "wp": 0.48
   },
   {
     "id": 401520281101849202,
@@ -83,7 +86,8 @@
     "playType": "Field Goal Good",
     "playText": "Will Reichard 39 yd field goal good",
     "scoring": true,
-    "ppa": 1.1
+    "ppa": 1.1,
+    "wp": 0.52
   },
   {
     "id": 401520281101849203,
@@ -105,7 +109,8 @@
     "playType": "Field Goal Missed",
     "playText": "Peyton Woodring 52 yd field goal missed",
     "scoring": false,
-    "ppa": -2.1
+    "ppa": -2.1,
+    "wp": 0.58
   },
   {
     "id": 401520282101850101,
@@ -127,7 +132,8 @@
     "playType": "Rush",
     "playText": "Kendall Milton run for 12 yds",
     "scoring": false,
-    "ppa": 1.8
+    "ppa": 1.8,
+    "wp": 0.92
   },
   {
     "id": 401520282101850102,
@@ -149,7 +155,8 @@
     "playType": "Rushing Touchdown",
     "playText": "Kendall Milton run for 5 yds for a TD",
     "scoring": true,
-    "ppa": 2.6
+    "ppa": 2.6,
+    "wp": 0.95
   },
   {
     "id": 401520282101850103,
@@ -169,6 +176,7 @@
     "playType": "Extra Point Good",
     "playText": "Peyton Woodring extra point good",
     "scoring": true,
-    "ppa": 0.8
+    "ppa": 0.8,
+    "wp": 0.96
   }
 ]

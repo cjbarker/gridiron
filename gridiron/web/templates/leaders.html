@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Leaders — {{ season }}{% endblock %}
+{% block content %}
+<form method="get" action="/leaders" class="card">
+  <label for="season" class="muted">Season</label>
+  <select id="season" name="season" onchange="this.form.submit()">
+    {% for s in seasons %}
+      <option value="{{ s }}" {% if s == season %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+<div class="card">
+  <h3>Win-probability leaders</h3>
+  <div class="chart" id="chart-wp"></div>
+</div>
+
+<div class="card">
+  <h3>Efficiency (PPA/EPA) leaders</h3>
+  {% if ppa_leaders %}
+  <table>
+    <thead><tr><th>Team</th><th>Plays</th><th>Avg PPA/EPA</th></tr></thead>
+    <tbody>
+      {% for r in ppa_leaders %}
+      <tr>
+        <td><a href="/teams/{{ r.team }}?season={{ season }}">{{ r.team }}</a></td>
+        <td class="muted">{{ r.plays }}</td>
+        <td class="score">{{ r.avg_ppa }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No play data for this season yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/vendor/plotly.min.js"></script>
+<script>
+  const FIGS = {{ figures|tojson }};
+  for (const [key, spec] of Object.entries(FIGS)) {
+    const el = document.getElementById('chart-' + key);
+    if (el) { const f = JSON.parse(spec); Plotly.newPlot(el, f.data, f.layout, {displayModeBar: false, responsive: true}); }
+  }
+</script>
+{% endblock %}
