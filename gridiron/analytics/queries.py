@@ -15,7 +15,15 @@ from sqlalchemy import Integer, and_, case, func, or_, select
 from sqlalchemy.orm import Session
 
 from gridiron.analytics.filters import PlayFilter, apply_play_filter
-from gridiron.db.models import Drive, Game, Play, Player, PlayerGameStat, Ranking
+from gridiron.db.models import (
+    BettingLine,
+    Drive,
+    Game,
+    Play,
+    Player,
+    PlayerGameStat,
+    Ranking,
+)
 
 # Field-position buckets by yards-to-goal (distance to opponent end zone).
 _FP_BUCKETS = [
@@ -659,4 +667,77 @@ def drive_efficiency(session: Session, team: str, season: int) -> dict[str, Any]
         "points_per_drive": round(points / n, 2) if n else None,
         "yards_per_drive": round(yards / n, 1) if n else None,
         "plays_per_drive": round(plays / n, 1) if n else None,
+    }
+
+
+# --- Betting lines --------------------------------------------------------
+
+def game_betting_lines(session: Session, game_id: int) -> list[dict[str, Any]]:
+    """All sportsbook lines recorded for a game."""
+    rows = (
+        session.execute(
+            select(BettingLine).where(BettingLine.game_id == game_id).order_by(BettingLine.provider)
+        )
+        .scalars()
+        .all()
+    )
+    return [
+        {
+            "provider": r.provider,
+            "spread": r.spread,
+            "formatted_spread": r.formatted_spread,
+            "over_under": r.over_under,
+            "home_moneyline": r.home_moneyline,
+            "away_moneyline": r.away_moneyline,
+        }
+        for r in rows
+    ]
+
+
+def team_ats_record(session: Session, team: str, season: int) -> dict[str, Any]:
+    """A team's against-the-spread and over/under record for a season.
+
+    Uses one line per game (first provider by id). CFBD spreads are from the home
+    team's perspective, so the team's number is negated when it's the away side.
+    """
+    log = {g["game_id"]: g for g in team_game_log(session, team, season)}
+    # First line per game (lowest id) keeps it deterministic across providers.
+    lines: dict[int, BettingLine] = {}
+    for bl in (
+        session.execute(
+            select(BettingLine).where(BettingLine.season == season).order_by(BettingLine.id)
+        )
+        .scalars()
+    ):
+        lines.setdefault(bl.game_id, bl)
+
+    covers = losses = pushes = 0
+    overs = unders = ou_pushes = 0
+    graded = 0
+    for gid, g in log.items():
+        bl = lines.get(gid)
+        if not bl or g["points_for"] is None or g["points_against"] is None:
+            continue
+        if bl.spread is not None:
+            team_spread = bl.spread if g["home_away"] == "home" else -bl.spread
+            diff = (g["points_for"] - g["points_against"]) + team_spread
+            covers += diff > 0
+            losses += diff < 0
+            pushes += diff == 0
+            graded += 1
+        if bl.over_under is not None:
+            total = g["points_for"] + g["points_against"]
+            overs += total > bl.over_under
+            unders += total < bl.over_under
+            ou_pushes += total == bl.over_under
+
+    def _rec(w, l_, p):
+        return f"{w}-{l_}" + (f"-{p}" if p else "")
+
+    return {
+        "team": team,
+        "season": season,
+        "games_with_lines": graded,
+        "ats": _rec(covers, losses, pushes),
+        "over_under": _rec(overs, unders, ou_pushes),
     }

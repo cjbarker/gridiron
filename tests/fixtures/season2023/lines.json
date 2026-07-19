@@ -1,0 +1,32 @@
+[
+  {
+    "id": 401520281,
+    "homeTeam": "Georgia",
+    "awayTeam": "Alabama",
+    "lines": [
+      {
+        "provider": "consensus",
+        "spread": -2.5,
+        "formattedSpread": "Georgia -2.5",
+        "overUnder": 52.5,
+        "homeMoneyline": -140,
+        "awayMoneyline": 120
+      }
+    ]
+  },
+  {
+    "id": 401520282,
+    "homeTeam": "Georgia",
+    "awayTeam": "Ball State",
+    "lines": [
+      {
+        "provider": "consensus",
+        "spread": -38.5,
+        "formattedSpread": "Georgia -38.5",
+        "overUnder": 55.5,
+        "homeMoneyline": -8000,
+        "awayMoneyline": 2500
+      }
+    ]
+  }
+]

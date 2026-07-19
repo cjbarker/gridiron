@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy import func, select
 
 from gridiron.db.models import (
+    BettingLine,
     Drive,
     Game,
     Play,
@@ -29,6 +30,7 @@ def _counts():
             "player_game_stats": s.scalar(select(func.count()).select_from(PlayerGameStat)),
             "team_game_stats": s.scalar(select(func.count()).select_from(TeamGameStat)),
             "rankings": s.scalar(select(func.count()).select_from(Ranking)),
+            "betting_lines": s.scalar(select(func.count()).select_from(BettingLine)),
         }
 
 
@@ -43,6 +45,7 @@ def test_ingest_populates_all_tables(db_env, fixture_source):
     assert c["player_game_stats"] == 6  # game1: 4, game2: Beck YDS + TD
     assert c["team_game_stats"] == 6  # 3 stats x 2 teams (game1 only)
     assert c["rankings"] == 2
+    assert c["betting_lines"] == 2  # one line per game
 
 
 def test_ingest_is_idempotent(db_env, fixture_source):

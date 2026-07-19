@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Any
 
 from gridiron.db.models import (
+    BettingLine,
     Drive,
     Game,
     Play,
@@ -337,6 +338,27 @@ def flatten_rankings(year: int, records: list[dict[str, Any]]) -> list[Ranking]:
                         first_place_votes=_int(pick(rank, "firstPlaceVotes", "first_place_votes")),
                     )
                 )
+    return rows
+
+
+def flatten_betting_lines(
+    game_id: int, season: int | None, record: dict[str, Any]
+) -> list[BettingLine]:
+    """CFBD /lines nests a game with a ``lines`` array (one entry per provider)."""
+    rows: list[BettingLine] = []
+    for ln in pick(record, "lines", default=[]) or []:
+        rows.append(
+            BettingLine(
+                game_id=game_id,
+                season=season,
+                provider=str(pick(ln, "provider", default="unknown")),
+                spread=_float(pick(ln, "spread")),
+                formatted_spread=pick(ln, "formattedSpread", "formatted_spread"),
+                over_under=_float(pick(ln, "overUnder", "over_under")),
+                home_moneyline=_int(pick(ln, "homeMoneyline", "home_moneyline")),
+                away_moneyline=_int(pick(ln, "awayMoneyline", "away_moneyline")),
+            )
+        )
     return rows
 
 

@@ -15,6 +15,25 @@
   </p>
 </div>
 
+{% if betting_lines %}
+<div class="card">
+  <h3>Betting lines</h3>
+  <table>
+    <thead><tr><th>Provider</th><th>Spread</th><th>O/U</th><th>ML (home/away)</th></tr></thead>
+    <tbody>
+      {% for l in betting_lines %}
+      <tr>
+        <td>{{ l.provider }}</td>
+        <td>{{ l.formatted_spread or l.spread }}</td>
+        <td>{{ l.over_under if l.over_under is not none else '—' }}</td>
+        <td class="muted">{{ l.home_moneyline if l.home_moneyline is not none else '—' }} / {{ l.away_moneyline if l.away_moneyline is not none else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 <div class="card">
   <h3>Scoring plays <span class="muted">({{ scoring_plays|length }})</span></h3>
   <table>

@@ -100,6 +100,9 @@ def main(argv: list[str] | None = None) -> int:
         "--no-rosters", action="store_true", help="Skip roster (players table) ingestion."
     )
     parser.add_argument(
+        "--no-lines", action="store_true", help="Skip betting-line ingestion."
+    )
+    parser.add_argument(
         "--init-db", action="store_true", help="Create tables before ingesting."
     )
     parser.add_argument(
@@ -127,6 +130,7 @@ def main(argv: list[str] | None = None) -> int:
             year,
             with_stats=not args.no_stats,
             with_rosters=not args.no_rosters,
+            with_lines=not args.no_lines,
             plays_source=args.plays_source,
             parquet_loader=loader if args.plays_source == "parquet" else None,
             stub_games=args.stub_games,

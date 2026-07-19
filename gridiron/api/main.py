@@ -233,6 +233,16 @@ def api_drive_efficiency(team: str, season: int, db: Session = Depends(get_db)) 
     return q.drive_efficiency(db, team, season)
 
 
+@app.get("/api/games/{game_id}/lines")
+def api_game_lines(game_id: int, db: Session = Depends(get_db)) -> list[dict]:
+    return q.game_betting_lines(db, game_id)
+
+
+@app.get("/api/analytics/ats-record")
+def api_ats_record(team: str, season: int, db: Session = Depends(get_db)) -> dict:
+    return q.team_ats_record(db, team, season)
+
+
 @app.get("/api/teams/{team}")
 def api_team(team: str, season: int, db: Session = Depends(get_db)) -> dict:
     summary = q.team_season_summary(db, team, season)
@@ -373,6 +383,7 @@ def page_game(request: Request, game_id: int, db: Session = Depends(get_db)) -> 
             "game": _game_summary(game),
             "plays": [_play_dict(p) for p in plays],
             "scoring_plays": [_play_dict(p) for p in scoring_plays],
+            "betting_lines": q.game_betting_lines(db, game_id),
         },
     )
 
@@ -513,6 +524,7 @@ def page_team(
             "rankings": q.team_rankings_history(db, team, season),
             "splits": q.team_splits(db, team, season),
             "drive_efficiency": q.drive_efficiency(db, team, season),
+            "ats": q.team_ats_record(db, team, season),
             "figures": figures,
             "filters": {
                 "week_min": week_min, "week_max": week_max, "home_away": home_away or "",

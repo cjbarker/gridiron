@@ -237,3 +237,23 @@ class Ranking(Base):
             "season", "week", "season_type", "poll", "team", name="uq_ranking"
         ),
     )
+
+
+class BettingLine(Base):
+    """One sportsbook's line for a game (CFBD /lines, one row per provider)."""
+
+    __tablename__ = "betting_lines"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), index=True)
+    season: Mapped[int | None] = mapped_column(Integer, index=True)
+    provider: Mapped[str] = mapped_column(String(48))
+    spread: Mapped[float | None] = mapped_column(Float)  # home-team perspective
+    formatted_spread: Mapped[str | None] = mapped_column(String(64))
+    over_under: Mapped[float | None] = mapped_column(Float)
+    home_moneyline: Mapped[int | None] = mapped_column(Integer)
+    away_moneyline: Mapped[int | None] = mapped_column(Integer)
+
+    __table_args__ = (
+        UniqueConstraint("game_id", "provider", name="uq_betting_line"),
+    )

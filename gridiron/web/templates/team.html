@@ -29,6 +29,13 @@
       <div class="stat"><div class="n">{{ qtr.points }}</div><div class="l">Q{{ qtr.period }} points</div></div>
     {% endfor %}
   </div>
+  {% if ats.games_with_lines %}
+  <p class="muted" style="margin-top:12px;">
+    <span class="pill">ATS {{ ats.ats }}</span>
+    <span class="pill">O/U {{ ats.over_under }}</span>
+    <span class="muted">({{ ats.games_with_lines }} games with lines)</span>
+  </p>
+  {% endif %}
 </div>
 
 <div class="card">

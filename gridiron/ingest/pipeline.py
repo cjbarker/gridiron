@@ -16,7 +16,15 @@ from dataclasses import dataclass, field
 from sqlalchemy import delete, insert, select
 from sqlalchemy.orm import Session
 
-from gridiron.db.models import Drive, Game, Play, PlayerGameStat, Ranking, TeamGameStat
+from gridiron.db.models import (
+    BettingLine,
+    Drive,
+    Game,
+    Play,
+    PlayerGameStat,
+    Ranking,
+    TeamGameStat,
+)
 from gridiron.db.session import session_scope
 from gridiron.ingest import transforms as tf
 from gridiron.ingest.sources import POSTSEASON, REGULAR, DataSource, load_pbp_parquet
@@ -42,6 +50,7 @@ def ingest_season(
     season_types: tuple[str, ...] = (REGULAR, POSTSEASON),
     with_stats: bool = True,
     with_rosters: bool = True,
+    with_lines: bool = True,
     plays_source: str = "api",
     parquet_loader: Callable[[int], list[dict]] | None = None,
     stub_games: bool = False,
@@ -72,6 +81,8 @@ def ingest_season(
                 _ingest_plays(source, year, st, session, report, game_ids)
         if with_stats:
             _ingest_box_scores(source, year, season_types, session, report, game_ids)
+        if with_lines:
+            _ingest_betting_lines(source, year, season_types, session, report, game_ids)
         _ingest_rankings(source, year, session, report)
     return report
 
@@ -275,6 +286,34 @@ def _ingest_box_scores(
                 session.add_all(rows)
                 report.bump("team_game_stats", len(rows))
             session.flush()
+
+
+def _ingest_betting_lines(
+    source: DataSource,
+    year: int,
+    season_types: tuple[str, ...],
+    session: Session,
+    report: IngestReport,
+    game_ids: set[int],
+) -> None:
+    if game_ids:
+        session.query(BettingLine).filter(BettingLine.game_id.in_(game_ids)).delete(
+            synchronize_session=False
+        )
+    seen: set[tuple[int, str]] = set()  # (game_id, provider) — guards duplicate rows
+    for st in season_types:
+        for rec in source.betting_lines(year, st):
+            gid = tf._int(tf.pick(rec, "id", "gameId", "game_id"))
+            if gid not in game_ids:
+                continue
+            for row in tf.flatten_betting_lines(gid, year, rec):
+                key = (gid, row.provider)
+                if key in seen:
+                    continue
+                seen.add(key)
+                session.add(row)
+                report.bump("betting_lines")
+    session.flush()
 
 
 def _ingest_rankings(source: DataSource, year: int, session: Session, report: IngestReport) -> None:
