@@ -228,3 +228,16 @@ def compare_fig(a_label: str, b_label: str, a: dict, b: dict) -> str:
     fig.add_trace(go.Bar(name=b_label, x=cats, y=vals(b), marker_color=_SEQ[2]))
     fig.update_layout(barmode="group")
     return fig_to_json(_theme(fig, f"{a_label} vs {b_label}"))
+
+
+def player_compare_fig(a_label: str, b_label: str, stats: list[dict]) -> str:
+    """Grouped bar comparing two players' shared numeric stats (from `player_compare`)."""
+    shared = [r for r in stats if r["a"] is not None and r["b"] is not None]
+    if not shared:
+        return _empty(f"{a_label} vs {b_label}", "No shared numeric stats")
+    cats = [f"{r['category']} {r['stat_type']}" for r in shared]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name=a_label, x=cats, y=[r["a"] for r in shared], marker_color=_ACCENT))
+    fig.add_trace(go.Bar(name=b_label, x=cats, y=[r["b"] for r in shared], marker_color=_SEQ[2]))
+    fig.update_layout(barmode="group")
+    return fig_to_json(_theme(fig, f"{a_label} vs {b_label}"))

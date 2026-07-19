@@ -2,7 +2,7 @@
 {% block title %}{{ profile.name }}{% endblock %}
 {% block content %}
 <div class="card">
-  <p class="muted"><a href="/players">← Players</a></p>
+  <p class="muted"><a href="/players">← Players</a> · <a href="/players/compare?a={{ profile.id }}{% if season %}&season={{ season }}{% endif %}">compare →</a></p>
   <h2>{{ profile.name }}
     {% if profile.jersey %}<span class="muted">#{{ profile.jersey }}</span>{% endif %}
   </h2>

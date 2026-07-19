@@ -578,3 +578,35 @@ def team_compare(session: Session, a: str, b: str, season: int) -> dict[str, Any
         "b": _team_metrics(session, b, season),
         "head_to_head": head_to_head,
     }
+
+
+def player_compare(
+    session: Session, a_id: int, b_id: int, season: int | None = None
+) -> dict[str, Any]:
+    """Two players' season stat lines aligned side by side.
+
+    Rows cover every (category, stat_type) either player recorded; numeric totals
+    come from :func:`player_season_stats`.
+    """
+    a_stats = {
+        (r["category"], r["stat_type"]): r for r in player_season_stats(session, a_id, season)
+    }
+    b_stats = {
+        (r["category"], r["stat_type"]): r for r in player_season_stats(session, b_id, season)
+    }
+    keys = sorted(set(a_stats) | set(b_stats))
+    rows = [
+        {
+            "category": c,
+            "stat_type": t,
+            "a": a_stats.get((c, t), {}).get("total"),
+            "b": b_stats.get((c, t), {}).get("total"),
+        }
+        for (c, t) in keys
+    ]
+    return {
+        "season": season,
+        "a": {"profile": player_profile(session, a_id)},
+        "b": {"profile": player_profile(session, b_id)},
+        "stats": rows,
+    }

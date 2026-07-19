@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Compare players{% endblock %}
+{% block content %}
+<form method="get" action="/players/compare" class="card">
+  <input type="hidden" name="season" value="{{ season }}">
+  <input type="search" name="a" placeholder="Player A (name)" value="{{ a }}">
+  <input type="search" name="b" placeholder="Player B (name)" value="{{ b }}">
+  <button type="submit">Compare</button>
+  <span class="muted">{{ season }}</span>
+</form>
+
+{% if comparison %}
+{% set A = comparison.a.profile %}{% set B = comparison.b.profile %}
+<div class="card">
+  <h2>
+    <a href="/players/{{ A.id }}?season={{ season }}">{{ A.name }}</a>
+    <span class="muted">{{ A.team }}{% if A.position %} · {{ A.position }}{% endif %}</span>
+    <span class="muted">vs</span>
+    <a href="/players/{{ B.id }}?season={{ season }}">{{ B.name }}</a>
+    <span class="muted">{{ B.team }}{% if B.position %} · {{ B.position }}{% endif %}</span>
+  </h2>
+  <table>
+    <thead><tr><th>Category</th><th>Stat</th><th>{{ A.name }}</th><th>{{ B.name }}</th></tr></thead>
+    <tbody>
+      {% for r in comparison.stats %}
+      <tr>
+        <td>{{ r.category }}</td>
+        <td>{{ r.stat_type }}</td>
+        <td class="score">{{ r.a if r.a is not none else '—' }}</td>
+        <td class="score">{{ r.b if r.b is not none else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="card"><div class="chart" id="chart-compare"></div></div>
+{% elif a or b %}
+<div class="card"><p class="muted">Couldn't resolve both players — try a fuller name.</p></div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if figure %}
+<script src="/vendor/plotly.min.js"></script>
+<script>
+  const fig = JSON.parse({{ figure|tojson }});
+  Plotly.newPlot(document.getElementById('chart-compare'), fig.data, fig.layout, {displayModeBar: false, responsive: true});
+</script>
+{% endif %}
+{% endblock %}

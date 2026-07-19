@@ -242,6 +242,14 @@ def api_players(
     return q.player_search(db, q_, season)
 
 
+@app.get("/api/players/compare")
+def api_player_compare(
+    a: int, b: int, season: int | None = None, db: Session = Depends(get_db)
+) -> dict:
+    """Compare two players by id (declared before /{player_id} to avoid capture)."""
+    return q.player_compare(db, a, b, season)
+
+
 @app.get("/api/players/{player_id}")
 def api_player(
     player_id: int, season: int | None = None, db: Session = Depends(get_db)
@@ -400,6 +408,49 @@ def page_compare(
             "teams": teams,
             "a": a,
             "b": b,
+            "comparison": comparison,
+            "figure": figure,
+        },
+    )
+
+
+def _resolve_player(db: Session, value: str | None, season: int | None) -> int | None:
+    """Interpret a query value as a player id, or resolve a name to the best match."""
+    if not value:
+        return None
+    if value.isdigit():
+        return int(value)
+    hits = q.player_search(db, value, season)
+    return hits[0]["player_id"] if hits else None
+
+
+@app.get("/players/compare", response_class=HTMLResponse)
+def page_player_compare(
+    request: Request,
+    a: str | None = None,
+    b: str | None = None,
+    season: int | None = None,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    season = _current_season(db, season)
+    a_id = _resolve_player(db, a, season)
+    b_id = _resolve_player(db, b, season)
+    comparison = None
+    figure = None
+    if a_id and b_id:
+        comparison = q.player_compare(db, a_id, b_id, season)
+        figure = ch.player_compare_fig(
+            comparison["a"]["profile"]["name"],
+            comparison["b"]["profile"]["name"],
+            comparison["stats"],
+        )
+    return templates.TemplateResponse(
+        request=request,
+        name="player_compare.html",
+        context={
+            "season": season,
+            "a": a or "",
+            "b": b or "",
             "comparison": comparison,
             "figure": figure,
         },

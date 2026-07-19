@@ -5,6 +5,7 @@
   <input type="search" name="q" placeholder="Search players…" value="{{ query or '' }}" autofocus>
   {% if season %}<input type="hidden" name="season" value="{{ season }}">{% endif %}
   <button type="submit">Search</button>
+  <a href="/players/compare{% if season %}?season={{ season }}{% endif %}" class="muted">compare two players →</a>
 </form>
 
 <div class="card">
