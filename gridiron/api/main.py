@@ -221,6 +221,18 @@ def api_ppa_by_down(
     return q.ppa_by_down(db, season, team)
 
 
+@app.get("/api/analytics/drive-outcomes")
+def api_drive_outcomes(
+    season: int, team: str | None = None, db: Session = Depends(get_db)
+) -> list[dict]:
+    return q.drive_outcomes(db, season, team)
+
+
+@app.get("/api/analytics/drive-efficiency")
+def api_drive_efficiency(team: str, season: int, db: Session = Depends(get_db)) -> dict:
+    return q.drive_efficiency(db, team, season)
+
+
 @app.get("/api/teams/{team}")
 def api_team(team: str, season: int, db: Session = Depends(get_db)) -> dict:
     summary = q.team_season_summary(db, team, season)
@@ -488,6 +500,7 @@ def page_team(
         "play_mix": ch.play_type_mix_fig(db, flt=flt),
         "ppa_down": ch.ppa_by_down_fig(db, flt=flt),
         "efficiency": ch.success_explosive_fig(db, season, team, flt=flt),
+        "drive_outcomes": ch.drive_outcomes_fig(db, season, team),
     }
     return templates.TemplateResponse(
         request=request,
@@ -499,6 +512,7 @@ def page_team(
             "game_log": game_log,
             "rankings": q.team_rankings_history(db, team, season),
             "splits": q.team_splits(db, team, season),
+            "drive_efficiency": q.drive_efficiency(db, team, season),
             "figures": figures,
             "filters": {
                 "week_min": week_min, "week_max": week_max, "home_away": home_away or "",

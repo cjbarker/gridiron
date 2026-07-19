@@ -241,3 +241,21 @@ def player_compare_fig(a_label: str, b_label: str, stats: list[dict]) -> str:
     fig.add_trace(go.Bar(name=b_label, x=cats, y=[r["b"] for r in shared], marker_color=_SEQ[2]))
     fig.update_layout(barmode="group")
     return fig_to_json(_theme(fig, f"{a_label} vs {b_label}"))
+
+
+def drive_outcomes_fig(session: Session, season: int, team: str | None = None) -> str:
+    """Bar of how a team's (or a season's) drives end."""
+    rows = q.drive_outcomes(session, season, team)
+    rows = [r for r in rows if r["drive_result"]]
+    if not rows:
+        return _empty("Drive outcomes")
+    fig = go.Figure(
+        go.Bar(
+            x=[r["drive_result"] for r in rows],
+            y=[r["drives"] for r in rows],
+            marker_color=_SEQ[1],
+            hovertemplate="%{x}<br>%{y} drives<extra></extra>",
+        )
+    )
+    fig.update_yaxes(title_text="Drives")
+    return fig_to_json(_theme(fig, "Drive outcomes"))

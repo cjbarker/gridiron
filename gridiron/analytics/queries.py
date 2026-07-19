@@ -15,7 +15,7 @@ from sqlalchemy import Integer, and_, case, func, or_, select
 from sqlalchemy.orm import Session
 
 from gridiron.analytics.filters import PlayFilter, apply_play_filter
-from gridiron.db.models import Game, Play, Player, PlayerGameStat, Ranking
+from gridiron.db.models import Drive, Game, Play, Player, PlayerGameStat, Ranking
 
 # Field-position buckets by yards-to-goal (distance to opponent end zone).
 _FP_BUCKETS = [
@@ -609,4 +609,54 @@ def player_compare(
         "a": {"profile": player_profile(session, a_id)},
         "b": {"profile": player_profile(session, b_id)},
         "stats": rows,
+    }
+
+
+# --- Drive-level analytics ------------------------------------------------
+
+def drive_outcomes(
+    session: Session, season: int, team: str | None = None
+) -> list[dict[str, Any]]:
+    """Distribution of drive results (TD, FG, Punt, Turnover, …) for a season."""
+    stmt = (
+        select(Drive.drive_result, func.count().label("drives"))
+        .join(Game, Game.id == Drive.game_id)
+        .where(Game.season == season)
+        .group_by(Drive.drive_result)
+        .order_by(func.count().desc())
+    )
+    if team is not None:
+        stmt = stmt.where(Drive.offense == team)
+    return [dict(r._mapping) for r in session.execute(stmt)]
+
+
+def drive_efficiency(session: Session, team: str, season: int) -> dict[str, Any]:
+    """Per-drive efficiency for a team: scoring %, points/yards/plays per drive."""
+    drives = (
+        session.execute(
+            select(Drive)
+            .join(Game, Game.id == Drive.game_id)
+            .where(Game.season == season, Drive.offense == team)
+        )
+        .scalars()
+        .all()
+    )
+    n = len(drives)
+    scoring = sum(1 for d in drives if d.scoring)
+    yards = sum(d.yards or 0 for d in drives)
+    plays = sum(d.plays or 0 for d in drives)
+    points = session.scalar(
+        select(func.coalesce(func.sum(Play.points_scored), 0)).where(
+            Play.season == season, Play.offense == team
+        )
+    ) or 0
+    return {
+        "team": team,
+        "season": season,
+        "drives": n,
+        "scoring_drives": scoring,
+        "scoring_pct": round(100.0 * scoring / n, 1) if n else None,
+        "points_per_drive": round(points / n, 2) if n else None,
+        "yards_per_drive": round(yards / n, 1) if n else None,
+        "plays_per_drive": round(plays / n, 1) if n else None,
     }

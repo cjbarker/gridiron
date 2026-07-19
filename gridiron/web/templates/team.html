@@ -54,6 +54,17 @@
 </div>
 
 <div class="card">
+  <h3>Drives</h3>
+  <div class="stat-grid">
+    <div class="stat"><div class="n">{{ drive_efficiency.drives }}</div><div class="l">Drives</div></div>
+    <div class="stat"><div class="n">{{ drive_efficiency.scoring_pct if drive_efficiency.scoring_pct is not none else '—' }}%</div><div class="l">Scoring %</div></div>
+    <div class="stat"><div class="n">{{ drive_efficiency.points_per_drive if drive_efficiency.points_per_drive is not none else '—' }}</div><div class="l">Pts / drive</div></div>
+    <div class="stat"><div class="n">{{ drive_efficiency.yards_per_drive if drive_efficiency.yards_per_drive is not none else '—' }}</div><div class="l">Yds / drive</div></div>
+    <div class="stat"><div class="n">{{ drive_efficiency.plays_per_drive if drive_efficiency.plays_per_drive is not none else '—' }}</div><div class="l">Plays / drive</div></div>
+  </div>
+</div>
+
+<div class="card">
   <h3>Analytics</h3>
   <div class="chart-grid">
     <div class="chart" id="chart-trend"></div>
@@ -61,6 +72,7 @@
     <div class="chart" id="chart-play_mix"></div>
     <div class="chart" id="chart-ppa_down"></div>
     <div class="chart" id="chart-efficiency"></div>
+    <div class="chart" id="chart-drive_outcomes"></div>
   </div>
 </div>
 
