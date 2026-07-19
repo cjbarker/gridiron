@@ -404,9 +404,7 @@ def page_index(
     conference: str | None = None,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    seasons = (
-        db.execute(select(Game.season).distinct().order_by(Game.season.desc())).scalars().all()
-    )
+    seasons = _all_seasons(db)
     if season is None and seasons:
         season = seasons[0]
     games = []
@@ -475,11 +473,14 @@ def _current_season(db: Session, season: int | None) -> int | None:
     return db.execute(select(func.max(Game.season))).scalar()
 
 
+def _all_seasons(db: Session) -> list[int]:
+    """All seasons with data, newest first (for the season-picker dropdowns)."""
+    return db.execute(select(Game.season).distinct().order_by(Game.season.desc())).scalars().all()
+
+
 @app.get("/teams", response_class=HTMLResponse)
 def page_teams(request: Request, season: int | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
-    seasons = (
-        db.execute(select(Game.season).distinct().order_by(Game.season.desc())).scalars().all()
-    )
+    seasons = _all_seasons(db)
     season = _current_season(db, season)
     teams = q.list_teams_with_data(db, season) if season is not None else []
     return templates.TemplateResponse(
@@ -496,9 +497,7 @@ def page_standings(
     conference: str | None = None,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    seasons = (
-        db.execute(select(Game.season).distinct().order_by(Game.season.desc())).scalars().all()
-    )
+    seasons = _all_seasons(db)
     season = _current_season(db, season)
     conferences = q.list_conferences(db, season) if season is not None else []
     if conference is None and conferences:
@@ -549,9 +548,7 @@ def page_coach(request: Request, name: str, db: Session = Depends(get_db)) -> HT
 
 @app.get("/leaders", response_class=HTMLResponse)
 def page_leaders(request: Request, season: int | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
-    seasons = (
-        db.execute(select(Game.season).distinct().order_by(Game.season.desc())).scalars().all()
-    )
+    seasons = _all_seasons(db)
     season = _current_season(db, season)
     figures = {}
     ppa = []
@@ -663,7 +660,12 @@ def page_team(
         conference=conference, vs_ranked=vs_ranked, down=down,
         distance_min=distance_min, distance_max=distance_max,
     )
-    extras_set = any([week_min, week_max, home_away, conference, vs_ranked, down, distance_min, distance_max])
+    # One display dict drives both the "active?" flag and the template form.
+    filters = {
+        "week_min": week_min, "week_max": week_max, "home_away": home_away or "",
+        "conference": conference or "", "vs_ranked": vs_ranked, "down": down or "",
+        "distance_min": distance_min, "distance_max": distance_max,
+    }
     figures = {
         "trend": ch.team_points_trend_fig(db, team, season),
         "field_position": ch.scoring_field_position_fig(db, flt=flt),
@@ -674,7 +676,7 @@ def page_team(
     }
     history = q.team_season_history(db, team)
     if len(history) > 1:
-        figures["trends"] = ch.team_trends_fig(db, team)
+        figures["trends"] = ch.team_trends_fig(db, team, history=history)
     return templates.TemplateResponse(
         request=request,
         name="team.html",
@@ -692,12 +694,8 @@ def page_team(
             "transfers": q.team_transfers(db, team, season),
             "coaches": q.team_coaches(db, team, season),
             "figures": figures,
-            "filters": {
-                "week_min": week_min, "week_max": week_max, "home_away": home_away or "",
-                "conference": conference or "", "vs_ranked": vs_ranked, "down": down or "",
-                "distance_min": distance_min, "distance_max": distance_max,
-            },
-            "filters_active": extras_set,
+            "filters": filters,
+            "filters_active": any(filters.values()),
         },
     )
 

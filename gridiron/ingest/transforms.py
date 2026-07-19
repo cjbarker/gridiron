@@ -306,13 +306,13 @@ def flatten_player_game_stats(
     Returns one :class:`PlayerGameStat` per (player, category, stat_type).
     """
     rows: list[PlayerGameStat] = []
-    for team_block in pick(record, "teams", default=[]) or []:
+    for team_block in pick(record, "teams", default=[]):
         team = pick(team_block, "team", "school")
-        for cat in pick(team_block, "categories", default=[]) or []:
+        for cat in pick(team_block, "categories", default=[]):
             category = pick(cat, "name", "category")
-            for typ in pick(cat, "types", default=[]) or []:
+            for typ in pick(cat, "types", default=[]):
                 stat_type = pick(typ, "name", "type")
-                for ath in pick(typ, "athletes", default=[]) or []:
+                for ath in pick(typ, "athletes", default=[]):
                     rows.append(
                         PlayerGameStat(
                             game_id=game_id,
@@ -333,9 +333,9 @@ def flatten_team_game_stats(
 ) -> list[TeamGameStat]:
     """CFBD /games/teams nests team -> stats[]. Returns one row per (team, stat)."""
     rows: list[TeamGameStat] = []
-    for team_block in pick(record, "teams", default=[]) or []:
+    for team_block in pick(record, "teams", default=[]):
         team = pick(team_block, "team", "school")
-        for stat in pick(team_block, "stats", default=[]) or []:
+        for stat in pick(team_block, "stats", default=[]):
             rows.append(
                 TeamGameStat(
                     game_id=game_id,
@@ -354,9 +354,9 @@ def flatten_rankings(year: int, records: list[dict[str, Any]]) -> list[Ranking]:
     for wk in records:
         week = _int(pick(wk, "week"))
         season_type = pick(wk, "seasonType", "season_type")
-        for poll in pick(wk, "polls", default=[]) or []:
+        for poll in pick(wk, "polls", default=[]):
             poll_name = pick(poll, "poll", "name")
-            for rank in pick(poll, "ranks", default=[]) or []:
+            for rank in pick(poll, "ranks", default=[]):
                 rows.append(
                     Ranking(
                         season=year,
@@ -378,7 +378,7 @@ def flatten_betting_lines(
 ) -> list[BettingLine]:
     """CFBD /lines nests a game with a ``lines`` array (one entry per provider)."""
     rows: list[BettingLine] = []
-    for ln in pick(record, "lines", default=[]) or []:
+    for ln in pick(record, "lines", default=[]):
         rows.append(
             BettingLine(
                 game_id=game_id,
@@ -412,7 +412,7 @@ def to_coach_seasons(year: int, record: dict[str, Any]) -> list[CoachSeason]:
     last = pick(record, "lastName", "last_name", default="")
     name = " ".join(x for x in [first, last] if x) or None
     rows: list[CoachSeason] = []
-    for s in pick(record, "seasons", default=[]) or []:
+    for s in pick(record, "seasons", default=[]):
         s_year = _int(pick(s, "year", "season"))
         if s_year != year:
             continue

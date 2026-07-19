@@ -26,6 +26,7 @@ Examples::
 from __future__ import annotations
 
 import argparse
+import functools
 import sys
 
 from gridiron.db.init_db import create_all
@@ -60,7 +61,7 @@ def _years(args: argparse.Namespace) -> list[int]:
 
 def _inspect_parquet(years: list[int], base_url: str | None) -> int:
     for year in years:
-        rows = load_pbp_parquet(year, base_url) if base_url else load_pbp_parquet(year)
+        rows = load_pbp_parquet(year, base_url)
         cols = sorted({k for r in rows[:200] for k in r}) if rows else []
         print(f"[{year}] rows={len(rows)} columns={len(cols)}")
         print("  " + ", ".join(cols))
@@ -124,11 +125,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.init_db:
         create_all()
 
-    def loader(year: int) -> list[dict]:
-        if args.parquet_base_url:
-            return load_pbp_parquet(year, args.parquet_base_url)
-        return load_pbp_parquet(year)
-
+    loader = functools.partial(load_pbp_parquet, base_url=args.parquet_base_url)
     source = _build_source(args)
     for year in _years(args):
         report = ingest_season(

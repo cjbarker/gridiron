@@ -10,8 +10,9 @@ duplicates.
 from __future__ import annotations
 
 import datetime as _dt
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
+from typing import TypeVar
 
 from sqlalchemy import delete, insert, select
 from sqlalchemy.orm import Session
@@ -115,6 +116,19 @@ def refresh_current_season(source: DataSource, *, today: _dt.date | None = None,
     return ingest_season(source, current_season(today), **kwargs)
 
 
+_T = TypeVar("_T")
+
+
+def _dedup(rows: Iterable[_T], key: Callable[[_T], object]) -> Iterator[_T]:
+    """Yield rows in order, skipping any whose ``key`` was already seen."""
+    seen: set[object] = set()
+    for row in rows:
+        k = key(row)
+        if k not in seen:
+            seen.add(k)
+            yield row
+
+
 def _ingest_reference(source: DataSource, year: int, session: Session, report: IngestReport) -> None:
     for raw in source.venues():
         v = tf.to_venue(raw)
@@ -182,7 +196,9 @@ def _ingest_plays(
     game_ids: set[int],
 ) -> None:
     # Known drive IDs so we never dangle a play FK at a drive we didn't ingest.
-    known_drives = set(session.execute(select(Drive.id)).scalars().all())
+    known_drives = set(
+        session.execute(select(Drive.id).where(Drive.game_id.in_(game_ids))).scalars().all()
+    )
     for week in source.weeks(year, season_type):
         for raw in source.plays(year, week, season_type):
             p = tf.to_play(raw, season=year)
@@ -231,7 +247,9 @@ def _ingest_plays_parquet(
             game_ids.add(gid)
         session.flush()
 
-    known_drives = set(session.execute(select(Drive.id)).scalars().all())
+    known_drives = set(
+        session.execute(select(Drive.id).where(Drive.game_id.in_(game_ids))).scalars().all()
+    )
     # Replace this season's plays for clean idempotency, then bulk insert.
     session.execute(delete(Play).where(Play.season == year))
 
@@ -309,19 +327,16 @@ def _ingest_betting_lines(
         session.query(BettingLine).filter(BettingLine.game_id.in_(game_ids)).delete(
             synchronize_session=False
         )
-    seen: set[tuple[int, str]] = set()  # (game_id, provider) — guards duplicate rows
-    for st in season_types:
-        for rec in source.betting_lines(year, st):
-            gid = tf._int(tf.pick(rec, "id", "gameId", "game_id"))
-            if gid not in game_ids:
-                continue
-            for row in tf.flatten_betting_lines(gid, year, rec):
-                key = (gid, row.provider)
-                if key in seen:
-                    continue
-                seen.add(key)
-                session.add(row)
-                report.bump("betting_lines")
+    def _lines() -> Iterator[BettingLine]:
+        for st in season_types:
+            for rec in source.betting_lines(year, st):
+                gid = tf._int(tf.pick(rec, "id", "gameId", "game_id"))
+                if gid in game_ids:
+                    yield from tf.flatten_betting_lines(gid, year, rec)
+
+    for row in _dedup(_lines(), key=lambda r: (r.game_id, r.provider)):
+        session.add(row)
+        report.bump("betting_lines")
     session.flush()
 
 
@@ -333,12 +348,8 @@ def _ingest_recruiting(
         synchronize_session=False
     )
     session.query(Transfer).filter(Transfer.season == year).delete(synchronize_session=False)
-    seen: set[str] = set()
-    for rec in source.recruiting_teams(year):
-        row = tf.to_team_recruiting(year, rec)
-        if row.team in seen:
-            continue
-        seen.add(row.team)
+    recruiting = (tf.to_team_recruiting(year, rec) for rec in source.recruiting_teams(year))
+    for row in _dedup(recruiting, key=lambda r: r.team):
         session.add(row)
         report.bump("recruiting_teams")
     for rec in source.transfers(year):
@@ -353,15 +364,12 @@ def _ingest_coaches(
     session.query(CoachSeason).filter(CoachSeason.season == year).delete(
         synchronize_session=False
     )
-    seen: set[tuple[str, str]] = set()  # (coach, team)
-    for rec in source.coaches(year):
-        for row in tf.to_coach_seasons(year, rec):
-            key = (row.coach, row.team)
-            if key in seen:
-                continue
-            seen.add(key)
-            session.add(row)
-            report.bump("coaches")
+    coach_rows = (
+        row for rec in source.coaches(year) for row in tf.to_coach_seasons(year, rec)
+    )
+    for row in _dedup(coach_rows, key=lambda r: (r.coach, r.team)):
+        session.add(row)
+        report.bump("coaches")
     session.flush()
 
 

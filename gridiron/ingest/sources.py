@@ -20,13 +20,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol
 
 REGULAR = "regular"
 POSTSEASON = "postseason"
 
 
-@runtime_checkable
 class DataSource(Protocol):
     """Everything the pipeline needs to ingest one season."""
 
@@ -195,54 +194,15 @@ class FixtureSource:
         return [1] if self.games(year, season_type) else []
 
 
-class EmptySource:
+def EmptySource() -> FixtureSource:
     """A source that returns nothing — for offline parquet backfills (no CFBD key).
 
     Paired with ``plays_source="parquet"`` and ``stub_games=True``, the pipeline
-    synthesizes games from the parquet, so no API access is needed at all.
+    synthesizes games from the parquet, so no API access is needed at all. It's just
+    a :class:`FixtureSource` pointed at a nonexistent directory — every loader call
+    finds no file and returns ``[]``.
     """
-
-    def teams(self, year: int) -> list[dict[str, Any]]:
-        return []
-
-    def venues(self) -> list[dict[str, Any]]:
-        return []
-
-    def games(self, year: int, season_type: str) -> list[dict[str, Any]]:
-        return []
-
-    def drives(self, year: int, season_type: str) -> list[dict[str, Any]]:
-        return []
-
-    def plays(self, year: int, week: int, season_type: str) -> list[dict[str, Any]]:
-        return []
-
-    def player_game_stats(self, year: int, week: int, season_type: str) -> list[dict[str, Any]]:
-        return []
-
-    def team_game_stats(self, year: int, week: int, season_type: str) -> list[dict[str, Any]]:
-        return []
-
-    def rankings(self, year: int) -> list[dict[str, Any]]:
-        return []
-
-    def rosters(self, year: int) -> list[dict[str, Any]]:
-        return []
-
-    def betting_lines(self, year: int, season_type: str) -> list[dict[str, Any]]:
-        return []
-
-    def recruiting_teams(self, year: int) -> list[dict[str, Any]]:
-        return []
-
-    def transfers(self, year: int) -> list[dict[str, Any]]:
-        return []
-
-    def coaches(self, year: int) -> list[dict[str, Any]]:
-        return []
-
-    def weeks(self, year: int, season_type: str) -> list[int]:
-        return []
+    return FixtureSource(Path("/nonexistent/gridiron-empty-source"))
 
 
 def _season_type_of(game: dict[str, Any]) -> str:

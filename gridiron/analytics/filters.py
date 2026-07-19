@@ -10,7 +10,7 @@ vs-ranked) use correlated ``EXISTS`` subqueries keyed on ``Play.game_id`` /
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 from sqlalchemy import and_, exists, select
 
@@ -31,13 +31,7 @@ class PlayFilter:
     distance_max: int | None = None
 
     def is_empty(self) -> bool:
-        return all(
-            getattr(self, f) in (None, False)
-            for f in (
-                "season", "team", "week_min", "week_max", "home_away",
-                "conference", "vs_ranked", "down", "distance_min", "distance_max",
-            )
-        )
+        return all(getattr(self, f.name) in (None, False) for f in fields(self))
 
 
 def apply_play_filter(stmt, f: PlayFilter):

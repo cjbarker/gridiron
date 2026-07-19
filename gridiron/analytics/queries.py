@@ -50,6 +50,11 @@ def _scope(stmt, season: int | None, team: str | None, flt: PlayFilter | None):
     return apply_play_filter(stmt, flt)
 
 
+def _format_record(wins: int, losses: int, ties: int = 0) -> str:
+    """Render a win-loss(-ties) record string, e.g. ``13-1`` or ``11-2-1``."""
+    return f"{wins}-{losses}" + (f"-{ties}" if ties else "")
+
+
 def scoring_by_field_position(
     session: Session,
     season: int | None = None,
@@ -292,7 +297,7 @@ def team_season_summary(session: Session, team: str, season: int) -> dict[str, A
         "wins": wins,
         "losses": losses,
         "ties": ties,
-        "record": f"{wins}-{losses}" + (f"-{ties}" if ties else ""),
+        "record": _format_record(wins, losses, ties),
         "points_for": pf,
         "points_against": pa,
         "ppg": round(pf / n, 1) if n else None,
@@ -516,7 +521,7 @@ def _record_of(games: list[dict[str, Any]]) -> dict[str, Any]:
     n = len(played)
     return {
         "games": n,
-        "record": f"{wins}-{losses}",
+        "record": _format_record(wins, losses),
         "points_for": pf,
         "points_against": pa,
         "ppg": round(pf / n, 1) if n else None,
@@ -699,6 +704,32 @@ def game_betting_lines(session: Session, game_id: int) -> list[dict[str, Any]]:
     ]
 
 
+def _first_lines_by_game(
+    session: Session, season: int, game_ids=None
+) -> dict[int, BettingLine]:
+    """The first betting line per game (lowest id → deterministic across providers).
+
+    Scope to ``game_ids`` when known to avoid scanning the whole season's lines.
+    """
+    stmt = select(BettingLine).where(BettingLine.season == season)
+    if game_ids is not None:
+        stmt = stmt.where(BettingLine.game_id.in_(game_ids))
+    lines: dict[int, BettingLine] = {}
+    for bl in session.execute(stmt.order_by(BettingLine.id)).scalars():
+        lines.setdefault(bl.game_id, bl)
+    return lines
+
+
+def _clv_base(bl: BettingLine) -> float | None:
+    """Home-perspective closing line value in points (``spread_open - spread``).
+
+    A team's CLV is this value for the home side and its negation for the away side.
+    """
+    if bl.spread is None or bl.spread_open is None:
+        return None
+    return bl.spread_open - bl.spread
+
+
 def team_ats_record(session: Session, team: str, season: int) -> dict[str, Any]:
     """A team's against-the-spread and over/under record for a season.
 
@@ -706,15 +737,7 @@ def team_ats_record(session: Session, team: str, season: int) -> dict[str, Any]:
     team's perspective, so the team's number is negated when it's the away side.
     """
     log = {g["game_id"]: g for g in team_game_log(session, team, season)}
-    # First line per game (lowest id) keeps it deterministic across providers.
-    lines: dict[int, BettingLine] = {}
-    for bl in (
-        session.execute(
-            select(BettingLine).where(BettingLine.season == season).order_by(BettingLine.id)
-        )
-        .scalars()
-    ):
-        lines.setdefault(bl.game_id, bl)
+    lines = _first_lines_by_game(session, season, game_ids=log.keys())
 
     covers = losses = pushes = 0
     overs = unders = ou_pushes = 0
@@ -736,15 +759,12 @@ def team_ats_record(session: Session, team: str, season: int) -> dict[str, Any]:
             unders += total < bl.over_under
             ou_pushes += total == bl.over_under
 
-    def _rec(w, l_, p):
-        return f"{w}-{l_}" + (f"-{p}" if p else "")
-
     return {
         "team": team,
         "season": season,
         "games_with_lines": graded,
-        "ats": _rec(covers, losses, pushes),
-        "over_under": _rec(overs, unders, ou_pushes),
+        "ats": _format_record(covers, losses, pushes),
+        "over_under": _format_record(overs, unders, ou_pushes),
     }
 
 
@@ -878,10 +898,10 @@ def conference_standings(
                 "team": team,
                 "conf_wins": cw,
                 "conf_losses": cl,
-                "conf_record": f"{cw}-{cl}",
+                "conf_record": _format_record(cw, cl),
                 "overall_wins": ow,
                 "overall_losses": ol,
-                "overall_record": f"{ow}-{ol}",
+                "overall_record": _format_record(ow, ol),
                 "points_for": pf,
                 "points_against": pa,
             }
@@ -991,7 +1011,7 @@ def _coach_dict(c: CoachSeason) -> dict[str, Any]:
         "wins": c.wins,
         "losses": c.losses,
         "ties": c.ties,
-        "record": f"{c.wins or 0}-{c.losses or 0}" + (f"-{c.ties}" if c.ties else ""),
+        "record": _format_record(c.wins or 0, c.losses or 0, c.ties or 0),
     }
 
 
@@ -1034,7 +1054,7 @@ def coach_career(session: Session, coach: str) -> dict[str, Any]:
         "wins": wins,
         "losses": losses,
         "ties": ties,
-        "record": f"{wins}-{losses}" + (f"-{ties}" if ties else ""),
+        "record": _format_record(wins, losses, ties),
         "win_pct": round(wins / games, 3) if games else None,
         "teams": sorted({c.team for c in rows}),
     }
@@ -1069,7 +1089,7 @@ def winningest_coaches(
                 "wins": m["wins"],
                 "losses": m["losses"],
                 "ties": m["ties"],
-                "record": f"{m['wins']}-{m['losses']}" + (f"-{m['ties']}" if m["ties"] else ""),
+                "record": _format_record(m["wins"] or 0, m["losses"] or 0, m["ties"] or 0),
                 "win_pct": round(m["wins"] / g, 3) if g else None,
             }
         )
@@ -1125,26 +1145,16 @@ def team_clv(session: Session, team: str, season: int) -> dict[str, Any]:
     line per game (first provider by id).
     """
     log = {g["game_id"]: g for g in team_game_log(session, team, season)}
-    lines: dict[int, BettingLine] = {}
-    for bl in (
-        session.execute(
-            select(BettingLine).where(BettingLine.season == season).order_by(BettingLine.id)
-        )
-        .scalars()
-    ):
-        lines.setdefault(bl.game_id, bl)
+    lines = _first_lines_by_game(session, season, game_ids=log.keys())
 
     graded = 0
     total_clv = 0.0
     beat = 0
     for gid, g in log.items():
-        bl = lines.get(gid)
-        if not bl or bl.spread is None or bl.spread_open is None:
+        base = _clv_base(lines[gid]) if gid in lines else None
+        if base is None:
             continue
-        sign = 1 if g["home_away"] == "home" else -1
-        team_open = sign * bl.spread_open
-        team_close = sign * bl.spread
-        clv = team_open - team_close
+        clv = base if g["home_away"] == "home" else -base
         total_clv += clv
         beat += clv > 0
         graded += 1
@@ -1158,26 +1168,41 @@ def team_clv(session: Session, team: str, season: int) -> dict[str, Any]:
 
 
 def clv_leaders(session: Session, season: int, limit: int = 25) -> list[dict[str, Any]]:
-    """Teams the market moved toward most after open (avg CLV backing them)."""
-    teams = {
-        t
-        for row in session.execute(
-            select(Game.home_team, Game.away_team).where(Game.season == season)
-        )
-        for t in row
-        if t
-    }
-    rows = []
-    for team in teams:
-        clv = team_clv(session, team, season)
-        if clv["games_with_movement"]:
-            rows.append(
-                {
-                    "team": team,
-                    "games": clv["games_with_movement"],
-                    "avg_clv_points": clv["avg_clv_points"],
-                    "beat_close_rate": clv["beat_close_rate"],
-                }
-            )
+    """Teams the market moved toward most after open (avg CLV backing them).
+
+    One pass over the season's games + first-line-per-game (both teams credited from
+    the home-perspective delta), rather than a per-team query.
+    """
+    lines = _first_lines_by_game(session, season)
+    games = session.execute(
+        select(Game.id, Game.home_team, Game.away_team).where(Game.season == season)
+    )
+    acc: dict[str, list[float]] = {}  # team -> [total_clv, beat, games]
+
+    def _add(team: str | None, clv: float) -> None:
+        if not team:
+            return
+        a = acc.setdefault(team, [0.0, 0.0, 0.0])
+        a[0] += clv
+        a[1] += clv > 0
+        a[2] += 1
+
+    for gid, home, away in games:
+        base = _clv_base(lines[gid]) if gid in lines else None
+        if base is None:
+            continue
+        _add(home, base)
+        _add(away, -base)
+
+    rows = [
+        {
+            "team": team,
+            "games": int(n),
+            "avg_clv_points": round(total / n, 2),
+            "beat_close_rate": round(beat / n, 3),
+        }
+        for team, (total, beat, n) in acc.items()
+        if n
+    ]
     rows.sort(key=lambda r: r["avg_clv_points"], reverse=True)
     return rows[:limit]

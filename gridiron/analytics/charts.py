@@ -56,6 +56,39 @@ def _empty(title: str, message: str = "No data") -> str:
     return fig_to_json(_theme(fig, title))
 
 
+def _leaderboard_bar(
+    rows: list[dict],
+    *,
+    value_key: str,
+    label_key: str,
+    title: str,
+    x_title: str,
+    color: str,
+    hover: str,
+    empty_title: str | None = None,
+    value_fn=None,
+    x_range: list[float] | None = None,
+) -> str:
+    """A themed horizontal-bar leaderboard: rank rows by ``value_key`` ascending
+    (largest on top) and label by ``label_key``. ``value_fn`` transforms the bar
+    value for display only (sorting still uses the raw key)."""
+    if not rows:
+        return _empty(empty_title or title)
+    rows = sorted(rows, key=lambda r: r[value_key])
+    xs = [value_fn(r[value_key]) if value_fn else r[value_key] for r in rows]
+    fig = go.Figure(
+        go.Bar(
+            x=xs,
+            y=[r[label_key] for r in rows],
+            orientation="h",
+            marker_color=color,
+            hovertemplate=hover,
+        )
+    )
+    fig.update_xaxes(title_text=x_title, **({"range": x_range} if x_range else {}))
+    return fig_to_json(_theme(fig, title))
+
+
 # --- Season / team scoring charts ----------------------------------------
 
 def scoring_field_position_fig(
@@ -124,20 +157,10 @@ def play_type_mix_fig(
     flt: PlayFilter | None = None,
 ) -> str:
     rows = q.play_type_mix(session, season, team, limit=limit, flt=flt)
-    if not rows:
-        return _empty("Play-type mix")
-    rows = sorted(rows, key=lambda r: r["plays"])
-    fig = go.Figure(
-        go.Bar(
-            x=[r["plays"] for r in rows],
-            y=[r["play_type"] for r in rows],
-            orientation="h",
-            marker_color=_SEQ[4],
-            hovertemplate="%{y}<br>%{x} plays<extra></extra>",
-        )
+    return _leaderboard_bar(
+        rows, value_key="plays", label_key="play_type", title="Play-type mix",
+        x_title="Plays", color=_SEQ[4], hover="%{y}<br>%{x} plays<extra></extra>",
     )
-    fig.update_xaxes(title_text="Plays")
-    return fig_to_json(_theme(fig, "Play-type mix"))
 
 
 # --- Team-specific charts -------------------------------------------------
@@ -261,9 +284,13 @@ def drive_outcomes_fig(session: Session, season: int, team: str | None = None) -
     return fig_to_json(_theme(fig, "Drive outcomes"))
 
 
-def team_trends_fig(session: Session, team: str) -> str:
-    """Season-over-season line of a team's scoring offense and defense."""
-    hist = q.team_season_history(session, team)
+def team_trends_fig(session: Session, team: str, history: list[dict] | None = None) -> str:
+    """Season-over-season line of a team's scoring offense and defense.
+
+    Pass a precomputed ``history`` (from ``team_season_history``) to avoid recomputing
+    the per-season fan-out when the caller already has it.
+    """
+    hist = history if history is not None else q.team_season_history(session, team)
     if not hist:
         return _empty(f"{team} season trends")
     seasons = [h["season"] for h in hist]
@@ -310,74 +337,40 @@ def win_probability_fig(session: Session, game_id: int, home: str, away: str) ->
 def wp_leaders_fig(session: Session, season: int, limit: int = 15) -> str:
     """Bar of teams by average in-game win probability."""
     rows = q.wp_leaders(session, season, min_plays=1, limit=limit)
-    if not rows:
-        return _empty("Win-probability leaders")
-    rows = sorted(rows, key=lambda r: r["avg_wp"])
-    fig = go.Figure(
-        go.Bar(
-            x=[round(r["avg_wp"] * 100, 1) for r in rows],
-            y=[r["team"] for r in rows],
-            orientation="h",
-            marker_color=_ACCENT,
-            hovertemplate="%{y}<br>%{x}%% avg WP<extra></extra>",
-        )
+    return _leaderboard_bar(
+        rows, value_key="avg_wp", label_key="team",
+        title="Average in-game win probability", empty_title="Win-probability leaders",
+        x_title="Avg win %", color=_ACCENT, hover="%{y}<br>%{x}%% avg WP<extra></extra>",
+        value_fn=lambda v: round(v * 100, 1), x_range=[0, 100],
     )
-    fig.update_xaxes(title_text="Avg win %", range=[0, 100])
-    return fig_to_json(_theme(fig, "Average in-game win probability"))
 
 
 def player_wpa_leaders_fig(session: Session, season: int, limit: int = 15) -> str:
     """Bar of players by total win probability added."""
     rows = q.player_wpa_leaders(session, season, min_plays=1, limit=limit)
-    if not rows:
-        return _empty("Win probability added (WPA)")
-    rows = sorted(rows, key=lambda r: r["total_wpa"])
-    fig = go.Figure(
-        go.Bar(
-            x=[r["total_wpa"] for r in rows],
-            y=[r["player"] for r in rows],
-            orientation="h",
-            marker_color=_SEQ[1],
-            hovertemplate="%{y}<br>%{x} total WPA<extra></extra>",
-        )
+    return _leaderboard_bar(
+        rows, value_key="total_wpa", label_key="player",
+        title="Win probability added (WPA) leaders",
+        empty_title="Win probability added (WPA)", x_title="Total WPA",
+        color=_SEQ[1], hover="%{y}<br>%{x} total WPA<extra></extra>",
     )
-    fig.update_xaxes(title_text="Total WPA")
-    return fig_to_json(_theme(fig, "Win probability added (WPA) leaders"))
 
 
 def winningest_fig(session: Session, limit: int = 15) -> str:
     """Bar of career wins for the winningest coaches (across ingested seasons)."""
     rows = q.winningest_coaches(session, min_games=1, limit=limit)
-    if not rows:
-        return _empty("Winningest coaches")
-    rows = sorted(rows, key=lambda r: r["wins"])
-    fig = go.Figure(
-        go.Bar(
-            x=[r["wins"] for r in rows],
-            y=[r["coach"] for r in rows],
-            orientation="h",
-            marker_color=_SEQ[2],
-            hovertemplate="%{y}<br>%{x} wins<extra></extra>",
-        )
+    return _leaderboard_bar(
+        rows, value_key="wins", label_key="coach", title="Winningest coaches",
+        x_title="Career wins", color=_SEQ[2], hover="%{y}<br>%{x} wins<extra></extra>",
     )
-    fig.update_xaxes(title_text="Career wins")
-    return fig_to_json(_theme(fig, "Winningest coaches"))
 
 
 def clv_leaders_fig(session: Session, season: int, limit: int = 15) -> str:
     """Bar of teams by average closing line value (market moved toward them)."""
     rows = q.clv_leaders(session, season, limit=limit)
-    if not rows:
-        return _empty("Closing line value")
-    rows = sorted(rows, key=lambda r: r["avg_clv_points"])
-    fig = go.Figure(
-        go.Bar(
-            x=[r["avg_clv_points"] for r in rows],
-            y=[r["team"] for r in rows],
-            orientation="h",
-            marker_color=_SEQ[5],
-            hovertemplate="%{y}<br>%{x} avg CLV pts<extra></extra>",
-        )
+    return _leaderboard_bar(
+        rows, value_key="avg_clv_points", label_key="team",
+        title="Closing line value (market movement toward team)",
+        empty_title="Closing line value", x_title="Avg CLV (points)",
+        color=_SEQ[5], hover="%{y}<br>%{x} avg CLV pts<extra></extra>",
     )
-    fig.update_xaxes(title_text="Avg CLV (points)")
-    return fig_to_json(_theme(fig, "Closing line value (market movement toward team)"))
