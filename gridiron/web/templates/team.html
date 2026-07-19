@@ -17,6 +17,12 @@
     {% for r in rankings %}<span class="pill">{{ r.poll }} wk{{ r.week }}: #{{ r.rank }}</span> {% endfor %}
   </p>
   {% endif %}
+  {% if coaches %}
+  <p class="muted" style="margin-top:12px;">
+    Head coach:
+    {% for c in coaches %}<a href="/coaches/{{ c.coach }}">{{ c.coach }}</a> <span class="pill">{{ c.record }}</span>{% if not loop.last %}, {% endif %}{% endfor %}
+  </p>
+  {% endif %}
   <p style="margin-top:12px;"><a href="/compare?a={{ team }}&season={{ season }}">Compare {{ team }} →</a></p>
 </div>
 

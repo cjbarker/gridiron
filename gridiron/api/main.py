@@ -248,6 +248,11 @@ def api_wp_leaders(season: int | None = None, db: Session = Depends(get_db)) -> 
     return q.wp_leaders(db, season)
 
 
+@app.get("/api/analytics/player-wpa-leaders")
+def api_player_wpa_leaders(season: int | None = None, db: Session = Depends(get_db)) -> list[dict]:
+    return q.player_wpa_leaders(db, season, min_plays=1)
+
+
 @app.get("/api/analytics/ats-record")
 def api_ats_record(team: str, season: int, db: Session = Depends(get_db)) -> dict:
     return q.team_ats_record(db, team, season)
@@ -269,6 +274,26 @@ def api_team_recruiting(team: str, season: int, db: Session = Depends(get_db)) -
         "recruiting": q.team_recruiting(db, team, season),
         "transfers": q.team_transfers(db, team, season),
     }
+
+
+@app.get("/api/coaches")
+def api_coaches(
+    q_: str | None = Query(default=None, alias="q"), db: Session = Depends(get_db)
+) -> list[dict]:
+    return q.coach_search(db, q_)
+
+
+@app.get("/api/coaches/{name}")
+def api_coach(name: str, db: Session = Depends(get_db)) -> dict:
+    career = q.coach_career(db, name)
+    if not career["seasons"]:
+        raise HTTPException(status_code=404, detail="coach not found")
+    return career
+
+
+@app.get("/api/analytics/winningest-coaches")
+def api_winningest(db: Session = Depends(get_db)) -> list[dict]:
+    return q.winningest_coaches(db)
 
 
 @app.get("/api/teams/{team}")
@@ -311,6 +336,7 @@ def api_player(
         "profile": profile,
         "season_stats": q.player_season_stats(db, player_id, season),
         "game_log": q.player_game_log(db, player_id, season),
+        "wpa": q.player_wpa(db, profile["name"], season) if profile.get("name") else None,
     }
 
 
@@ -473,6 +499,32 @@ def page_standings(
     )
 
 
+@app.get("/coaches", response_class=HTMLResponse)
+def page_coaches(
+    request: Request,
+    q_: str | None = Query(default=None, alias="q"),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    results = q.coach_search(db, q_) if q_ else []
+    figure = None if q_ else ch.winningest_fig(db)
+    winningest = [] if q_ else q.winningest_coaches(db)
+    return templates.TemplateResponse(
+        request=request,
+        name="coaches.html",
+        context={"query": q_, "results": results, "figure": figure, "winningest": winningest},
+    )
+
+
+@app.get("/coaches/{name}", response_class=HTMLResponse)
+def page_coach(request: Request, name: str, db: Session = Depends(get_db)) -> HTMLResponse:
+    career = q.coach_career(db, name)
+    if not career["seasons"]:
+        raise HTTPException(status_code=404, detail="coach not found")
+    return templates.TemplateResponse(
+        request=request, name="coach.html", context={"career": career}
+    )
+
+
 @app.get("/leaders", response_class=HTMLResponse)
 def page_leaders(request: Request, season: int | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
     seasons = (
@@ -483,6 +535,7 @@ def page_leaders(request: Request, season: int | None = None, db: Session = Depe
     ppa = []
     if season is not None:
         figures["wp"] = ch.wp_leaders_fig(db, season)
+        figures["player_wpa"] = ch.player_wpa_leaders_fig(db, season)
         ppa = q.ppa_leaders(db, season, min_plays=1)
     return templates.TemplateResponse(
         request=request,
@@ -613,6 +666,7 @@ def page_team(
             "ats": q.team_ats_record(db, team, season),
             "recruiting": q.team_recruiting(db, team, season),
             "transfers": q.team_transfers(db, team, season),
+            "coaches": q.team_coaches(db, team, season),
             "figures": figures,
             "filters": {
                 "week_min": week_min, "week_max": week_max, "home_away": home_away or "",
@@ -655,6 +709,7 @@ def page_player(
             "season": season,
             "season_stats": q.player_season_stats(db, player_id, season),
             "game_log": q.player_game_log(db, player_id, season),
+            "wpa": q.player_wpa(db, profile["name"], season) if profile.get("name") else None,
         },
     )
 

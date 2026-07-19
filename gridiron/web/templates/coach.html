@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ career.coach }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted"><a href="/coaches">← Coaches</a></p>
+  <h2>{{ career.coach }}</h2>
+  <div class="stat-grid">
+    <div class="stat"><div class="n">{{ career.record }}</div><div class="l">Career</div></div>
+    <div class="stat"><div class="n">{{ career.win_pct if career.win_pct is not none else '—' }}</div><div class="l">Win %</div></div>
+    <div class="stat"><div class="n">{{ career.seasons|length }}</div><div class="l">Seasons</div></div>
+  </div>
+  {% if career.teams %}<p class="muted">Teams: {% for t in career.teams %}<a href="/teams/{{ t }}">{{ t }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+</div>
+
+<div class="card">
+  <h3>Season by season</h3>
+  <table>
+    <thead><tr><th>Season</th><th>Team</th><th>Record</th><th>Games</th></tr></thead>
+    <tbody>
+      {% for s in career.seasons %}
+      <tr>
+        <td class="muted">{{ s.season }}</td>
+        <td><a href="/teams/{{ s.team }}?season={{ s.season }}">{{ s.team }}</a></td>
+        <td class="score">{{ s.record }}</td>
+        <td class="muted">{{ s.games if s.games is not none else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -13,6 +13,7 @@ from typing import Any
 
 from gridiron.db.models import (
     BettingLine,
+    CoachSeason,
     Drive,
     Game,
     Play,
@@ -203,7 +204,36 @@ def to_play(d: dict[str, Any], season: int | None = None) -> Play:
         points_scored=points if (scoring or points) else 0,
         ppa=_float(pick(d, "ppa")),
         epa=_float(pick(d, "EPA", "epa")),
-        wp=_float(pick(d, "wp", "wp_before", "wpa", "winProbability")),
+        wp=_float(pick(d, "wp", "wp_before", "winProbability")),
+        wpa=_wpa(d),
+        wpa_player=_primary_player(d),
+    )
+
+
+def _wpa(d: dict[str, Any]) -> float | None:
+    """Win probability added for the offense — direct if present, else the
+    ``wp_after - wp_before`` delta (both cfbfastR columns)."""
+    direct = _float(pick(d, "wpa", "wp_added", "WPA"))
+    if direct is not None:
+        return direct
+    before = _float(pick(d, "wp_before"))
+    after = _float(pick(d, "wp_after"))
+    if before is not None and after is not None:
+        return round(after - before, 6)
+    return None
+
+
+def _primary_player(d: dict[str, Any]) -> str | None:
+    """The single player credited with a play's WPA: the ball carrier / passer
+    (priority rusher → passer → receiver → kicker → punter)."""
+    return pick(
+        d,
+        "rusher_player_name",
+        "passer_player_name",
+        "receiver_player_name",
+        "kicker_player_name",
+        "punter_player_name",
+        "wpa_player",
     )
 
 
@@ -371,6 +401,33 @@ def to_team_recruiting(year: int, record: dict[str, Any]) -> TeamRecruitingRank:
         rank=_int(pick(record, "rank")),
         points=_float(pick(record, "points")),
     )
+
+
+def to_coach_seasons(year: int, record: dict[str, Any]) -> list[CoachSeason]:
+    """CFBD /coaches nests a coach with a ``seasons`` array. Return one
+    CoachSeason per season entry matching ``year`` (keeps per-season idempotency)."""
+    first = pick(record, "firstName", "first_name", default="")
+    last = pick(record, "lastName", "last_name", default="")
+    name = " ".join(x for x in [first, last] if x) or None
+    rows: list[CoachSeason] = []
+    for s in pick(record, "seasons", default=[]) or []:
+        s_year = _int(pick(s, "year", "season"))
+        if s_year != year:
+            continue
+        rows.append(
+            CoachSeason(
+                coach=name or "Unknown",
+                first_name=first or None,
+                last_name=last or None,
+                team=str(pick(s, "school", "team", default="Unknown")),
+                season=s_year,
+                games=_int(pick(s, "games")),
+                wins=_int(pick(s, "wins")),
+                losses=_int(pick(s, "losses")),
+                ties=_int(pick(s, "ties")),
+            )
+        )
+    return rows
 
 
 def to_transfer(year: int, record: dict[str, Any]) -> Transfer:

@@ -13,6 +13,12 @@
     {% if profile.weight %}· {{ profile.weight }} lb{% endif %}
     {% if profile.hometown %}· {{ profile.hometown }}{% endif %}
   </p>
+  {% if wpa and wpa.plays %}
+  <p class="muted">
+    <span class="pill">WPA {{ wpa.total_wpa }}</span>
+    <span class="muted">win probability added over {{ wpa.plays }} credited plays</span>
+  </p>
+  {% endif %}
 </div>
 
 <div class="card">

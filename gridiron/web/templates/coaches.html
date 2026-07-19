@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Coaches{% endblock %}
+{% block content %}
+<form method="get" action="/coaches" class="card">
+  <input type="search" name="q" placeholder="Search coaches…" value="{{ query or '' }}" autofocus>
+  <button type="submit">Search</button>
+</form>
+
+{% if query %}
+<div class="card">
+  <h2>Results for “{{ query }}” <span class="muted">({{ results|length }})</span></h2>
+  {% if results %}
+  <ul>
+    {% for c in results %}<li><a href="/coaches/{{ c.coach }}">{{ c.coach }}</a></li>{% endfor %}
+  </ul>
+  {% else %}<p class="muted">No coaches matched.</p>{% endif %}
+</div>
+{% else %}
+<div class="card">
+  <h3>Winningest coaches</h3>
+  <div class="chart" id="chart-winningest"></div>
+</div>
+<div class="card">
+  <table>
+    <thead><tr><th>#</th><th>Coach</th><th>Record</th><th>Win %</th></tr></thead>
+    <tbody>
+      {% for c in winningest %}
+      <tr>
+        <td class="muted">{{ loop.index }}</td>
+        <td><a href="/coaches/{{ c.coach }}">{{ c.coach }}</a></td>
+        <td class="score">{{ c.record }}</td>
+        <td class="muted">{{ c.win_pct if c.win_pct is not none else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if figure %}
+<script src="/vendor/plotly.min.js"></script>
+<script>
+  const fig = JSON.parse({{ figure|tojson }});
+  Plotly.newPlot(document.getElementById('chart-winningest'), fig.data, fig.layout, {displayModeBar: false, responsive: true});
+</script>
+{% endif %}
+{% endblock %}

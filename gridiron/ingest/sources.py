@@ -42,6 +42,7 @@ class DataSource(Protocol):
     def betting_lines(self, year: int, season_type: str) -> list[dict[str, Any]]: ...
     def recruiting_teams(self, year: int) -> list[dict[str, Any]]: ...
     def transfers(self, year: int) -> list[dict[str, Any]]: ...
+    def coaches(self, year: int) -> list[dict[str, Any]]: ...
     def weeks(self, year: int, season_type: str) -> list[int]: ...
 
 
@@ -121,6 +122,9 @@ class CFBDSource:
     def transfers(self, year: int) -> list[dict[str, Any]]:
         return self._get("/player/portal", year=year)
 
+    def coaches(self, year: int) -> list[dict[str, Any]]:
+        return self._get("/coaches", year=year)
+
     def weeks(self, year: int, season_type: str) -> list[int]:
         """Distinct weeks that actually have games (avoids blind 1..20 loops)."""
         games = self.games(year, season_type)
@@ -183,6 +187,9 @@ class FixtureSource:
     def transfers(self, year: int) -> list[dict[str, Any]]:
         return self._load("transfers")
 
+    def coaches(self, year: int) -> list[dict[str, Any]]:
+        return self._load("coaches")
+
     def weeks(self, year: int, season_type: str) -> list[int]:
         # Return one nominal week; the fixture source ignores week filtering.
         return [1] if self.games(year, season_type) else []
@@ -229,6 +236,9 @@ class EmptySource:
         return []
 
     def transfers(self, year: int) -> list[dict[str, Any]]:
+        return []
+
+    def coaches(self, year: int) -> list[dict[str, Any]]:
         return []
 
     def weeks(self, year: int, season_type: str) -> list[int]:

@@ -324,3 +324,41 @@ def wp_leaders_fig(session: Session, season: int, limit: int = 15) -> str:
     )
     fig.update_xaxes(title_text="Avg win %", range=[0, 100])
     return fig_to_json(_theme(fig, "Average in-game win probability"))
+
+
+def player_wpa_leaders_fig(session: Session, season: int, limit: int = 15) -> str:
+    """Bar of players by total win probability added."""
+    rows = q.player_wpa_leaders(session, season, min_plays=1, limit=limit)
+    if not rows:
+        return _empty("Win probability added (WPA)")
+    rows = sorted(rows, key=lambda r: r["total_wpa"])
+    fig = go.Figure(
+        go.Bar(
+            x=[r["total_wpa"] for r in rows],
+            y=[r["player"] for r in rows],
+            orientation="h",
+            marker_color=_SEQ[1],
+            hovertemplate="%{y}<br>%{x} total WPA<extra></extra>",
+        )
+    )
+    fig.update_xaxes(title_text="Total WPA")
+    return fig_to_json(_theme(fig, "Win probability added (WPA) leaders"))
+
+
+def winningest_fig(session: Session, limit: int = 15) -> str:
+    """Bar of career wins for the winningest coaches (across ingested seasons)."""
+    rows = q.winningest_coaches(session, min_games=1, limit=limit)
+    if not rows:
+        return _empty("Winningest coaches")
+    rows = sorted(rows, key=lambda r: r["wins"])
+    fig = go.Figure(
+        go.Bar(
+            x=[r["wins"] for r in rows],
+            y=[r["coach"] for r in rows],
+            orientation="h",
+            marker_color=_SEQ[2],
+            hovertemplate="%{y}<br>%{x} wins<extra></extra>",
+        )
+    )
+    fig.update_xaxes(title_text="Career wins")
+    return fig_to_json(_theme(fig, "Winningest coaches"))

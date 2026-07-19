@@ -149,11 +149,14 @@ class Play(Base):
     scoring: Mapped[bool | None] = mapped_column(Boolean, index=True)
     points_scored: Mapped[int | None] = mapped_column(Integer)
 
-    # Advanced metrics. `ppa` comes straight from CFBD /plays; `epa`/`wp` are
-    # populated when loading the cfbfastR bulk parquet (nullable otherwise).
+    # Advanced metrics. `ppa` comes straight from CFBD /plays; `epa`/`wp`/`wpa`
+    # are populated when loading the cfbfastR bulk parquet (nullable otherwise).
     ppa: Mapped[float | None] = mapped_column(Float)
     epa: Mapped[float | None] = mapped_column(Float)
     wp: Mapped[float | None] = mapped_column(Float)
+    # Win probability added on this play, credited to the primary player.
+    wpa: Mapped[float | None] = mapped_column(Float)
+    wpa_player: Mapped[str | None] = mapped_column(String(160), index=True)
 
     game: Mapped["Game"] = relationship(back_populates="plays")
 
@@ -272,6 +275,27 @@ class TeamRecruitingRank(Base):
 
     __table_args__ = (
         UniqueConstraint("season", "team", name="uq_team_recruiting"),
+    )
+
+
+class CoachSeason(Base):
+    """One coach's record with a team for one season (CFBD /coaches)."""
+
+    __tablename__ = "coach_seasons"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    coach: Mapped[str] = mapped_column(String(160), index=True)
+    first_name: Mapped[str | None] = mapped_column(String(96))
+    last_name: Mapped[str | None] = mapped_column(String(96))
+    team: Mapped[str] = mapped_column(String(128), index=True)
+    season: Mapped[int] = mapped_column(Integer, index=True)
+    games: Mapped[int | None] = mapped_column(Integer)
+    wins: Mapped[int | None] = mapped_column(Integer)
+    losses: Mapped[int | None] = mapped_column(Integer)
+    ties: Mapped[int | None] = mapped_column(Integer)
+
+    __table_args__ = (
+        UniqueConstraint("coach", "team", "season", name="uq_coach_season"),
     )
 
 

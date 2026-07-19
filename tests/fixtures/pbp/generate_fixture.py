@@ -49,6 +49,9 @@ def _play(idp, drive_id, drive_no, pnum, pos, dfe, pos_s, def_s, period, mins, s
         "scoring": scoring,
         "EPA": epa,
         "wp_before": wp,
+        "wpa": round((wp - 0.5) * 0.1, 4),  # small synthetic WPA per play
+        "rusher_player_name": ("Rush" in ptype) and text.split(" run")[0] or None,
+        "passer_player_name": ("Passing" in ptype) and text.split(" pass")[0] or None,
     }
 
 

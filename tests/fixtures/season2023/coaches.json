@@ -1,0 +1,17 @@
+[
+  {
+    "firstName": "Kirby",
+    "lastName": "Smart",
+    "seasons": [
+      { "school": "Georgia", "year": 2022, "games": 15, "wins": 15, "losses": 0, "ties": 0 },
+      { "school": "Georgia", "year": 2023, "games": 14, "wins": 13, "losses": 1, "ties": 0 }
+    ]
+  },
+  {
+    "firstName": "Nick",
+    "lastName": "Saban",
+    "seasons": [
+      { "school": "Alabama", "year": 2023, "games": 14, "wins": 12, "losses": 2, "ties": 0 }
+    ]
+  }
+]

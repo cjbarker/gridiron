@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from gridiron.db.models import (
     BettingLine,
+    CoachSeason,
     Drive,
     Game,
     Play,
@@ -54,6 +55,7 @@ def ingest_season(
     with_rosters: bool = True,
     with_lines: bool = True,
     with_recruiting: bool = True,
+    with_coaches: bool = True,
     plays_source: str = "api",
     parquet_loader: Callable[[int], list[dict]] | None = None,
     stub_games: bool = False,
@@ -88,6 +90,8 @@ def ingest_season(
             _ingest_betting_lines(source, year, season_types, session, report, game_ids)
         if with_recruiting:
             _ingest_recruiting(source, year, session, report)
+        if with_coaches:
+            _ingest_coaches(source, year, session, report)
         _ingest_rankings(source, year, session, report)
     return report
 
@@ -340,6 +344,24 @@ def _ingest_recruiting(
     for rec in source.transfers(year):
         session.add(tf.to_transfer(year, rec))
         report.bump("transfers")
+    session.flush()
+
+
+def _ingest_coaches(
+    source: DataSource, year: int, session: Session, report: IngestReport
+) -> None:
+    session.query(CoachSeason).filter(CoachSeason.season == year).delete(
+        synchronize_session=False
+    )
+    seen: set[tuple[str, str]] = set()  # (coach, team)
+    for rec in source.coaches(year):
+        for row in tf.to_coach_seasons(year, rec):
+            key = (row.coach, row.team)
+            if key in seen:
+                continue
+            seen.add(key)
+            session.add(row)
+            report.bump("coaches")
     session.flush()
 
 

@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from gridiron.analytics.filters import PlayFilter, apply_play_filter
 from gridiron.db.models import (
     BettingLine,
+    CoachSeason,
     Drive,
     Game,
     Play,
@@ -940,3 +941,134 @@ def team_transfers(session: Session, team: str, season: int) -> dict[str, Any]:
         .order_by(Transfer.stars.desc().nullslast(), Transfer.player)
     )
     return {"incoming": incoming, "outgoing": outgoing}
+
+
+# --- Player win probability added (WPA) -----------------------------------
+
+def player_wpa_leaders(
+    session: Session, season: int | None = None, min_plays: int = 1, limit: int = 25
+) -> list[dict[str, Any]]:
+    """Players ranked by total win probability added (primary-player credit)."""
+    stmt = (
+        select(
+            Play.wpa_player.label("player"),
+            func.count().label("plays"),
+            func.round(func.sum(Play.wpa), 4).label("total_wpa"),
+        )
+        .where(Play.wpa.isnot(None), Play.wpa_player.isnot(None))
+        .group_by(Play.wpa_player)
+        .having(func.count() >= min_plays)
+        .order_by(func.sum(Play.wpa).desc())
+        .limit(limit)
+    )
+    if season is not None:
+        stmt = stmt.where(Play.season == season)
+    return [dict(r._mapping) for r in session.execute(stmt)]
+
+
+def player_wpa(session: Session, player_name: str, season: int | None = None) -> dict[str, Any]:
+    """A single player's total WPA and play count (credited plays), by name."""
+    stmt = select(
+        func.count().label("plays"),
+        func.round(func.coalesce(func.sum(Play.wpa), 0), 4).label("total_wpa"),
+    ).where(Play.wpa_player == player_name, Play.wpa.isnot(None))
+    if season is not None:
+        stmt = stmt.where(Play.season == season)
+    row = session.execute(stmt).one()
+    return {"player": player_name, "plays": row.plays, "total_wpa": row.total_wpa}
+
+
+# --- Coaching records -----------------------------------------------------
+
+def _coach_dict(c: CoachSeason) -> dict[str, Any]:
+    return {
+        "coach": c.coach,
+        "team": c.team,
+        "season": c.season,
+        "games": c.games,
+        "wins": c.wins,
+        "losses": c.losses,
+        "ties": c.ties,
+        "record": f"{c.wins or 0}-{c.losses or 0}" + (f"-{c.ties}" if c.ties else ""),
+    }
+
+
+def team_coaches(session: Session, team: str, season: int) -> list[dict[str, Any]]:
+    """Head coach(es) for a team in a season, with their record."""
+    rows = session.execute(
+        select(CoachSeason).where(CoachSeason.team == team, CoachSeason.season == season)
+    ).scalars()
+    return [_coach_dict(c) for c in rows]
+
+
+def coach_search(session: Session, q: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    """Distinct coaches by (partial) name."""
+    stmt = select(CoachSeason.coach).distinct()
+    if q:
+        stmt = stmt.where(CoachSeason.coach.ilike(f"%{q}%"))
+    stmt = stmt.order_by(CoachSeason.coach).limit(limit)
+    return [{"coach": r[0]} for r in session.execute(stmt)]
+
+
+def coach_career(session: Session, coach: str) -> dict[str, Any]:
+    """A coach's season-by-season rows plus aggregated career totals."""
+    rows = (
+        session.execute(
+            select(CoachSeason)
+            .where(CoachSeason.coach == coach)
+            .order_by(CoachSeason.season, CoachSeason.team)
+        )
+        .scalars()
+        .all()
+    )
+    seasons = [_coach_dict(c) for c in rows]
+    wins = sum(c.wins or 0 for c in rows)
+    losses = sum(c.losses or 0 for c in rows)
+    ties = sum(c.ties or 0 for c in rows)
+    games = wins + losses + ties
+    return {
+        "coach": coach,
+        "seasons": seasons,
+        "wins": wins,
+        "losses": losses,
+        "ties": ties,
+        "record": f"{wins}-{losses}" + (f"-{ties}" if ties else ""),
+        "win_pct": round(wins / games, 3) if games else None,
+        "teams": sorted({c.team for c in rows}),
+    }
+
+
+def winningest_coaches(
+    session: Session, min_games: int = 1, limit: int = 25
+) -> list[dict[str, Any]]:
+    """Career win leaders across all ingested seasons."""
+    wins = func.coalesce(func.sum(CoachSeason.wins), 0)
+    losses = func.coalesce(func.sum(CoachSeason.losses), 0)
+    ties = func.coalesce(func.sum(CoachSeason.ties), 0)
+    stmt = (
+        select(
+            CoachSeason.coach,
+            wins.label("wins"),
+            losses.label("losses"),
+            ties.label("ties"),
+        )
+        .group_by(CoachSeason.coach)
+        .having((wins + losses + ties) >= min_games)
+        .order_by(wins.desc())
+        .limit(limit)
+    )
+    out = []
+    for r in session.execute(stmt):
+        m = r._mapping
+        g = (m["wins"] or 0) + (m["losses"] or 0) + (m["ties"] or 0)
+        out.append(
+            {
+                "coach": m["coach"],
+                "wins": m["wins"],
+                "losses": m["losses"],
+                "ties": m["ties"],
+                "record": f"{m['wins']}-{m['losses']}" + (f"-{m['ties']}" if m["ties"] else ""),
+                "win_pct": round(m["wins"] / g, 3) if g else None,
+            }
+        )
+    return out
