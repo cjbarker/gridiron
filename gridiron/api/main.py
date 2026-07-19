@@ -2,7 +2,7 @@
 
 Run with::
 
-    uvicorn gridiron.api.main:app --reload
+    uv run uvicorn gridiron.api.main:app --reload
 
 Endpoints (JSON):
     GET /api/teams

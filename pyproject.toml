@@ -18,16 +18,17 @@ dependencies = [
     "jinja2>=3.1",
     "plotly>=5.20",
     "pyarrow>=15.0",
-    # Optional but recommended data sources:
-    #   cfbd          -> official CollegeFootballData API v2 Python client
-    #   psycopg[binary]-> PostgreSQL driver (production DB)
-    #   polars        -> fast parquet reader for bulk backfill
 ]
 
+# Optional extras enable production/bulk paths (the app runs offline without them):
+#   postgres -> PostgreSQL driver   ·   bulk -> fast parquet reader for backfill
+# Enable with: uv sync --extra postgres   (or `uv sync --all-extras`)
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.1"]
-cfbd = ["cfbd>=5.0"]
 bulk = ["polars>=0.20"]
+
+# Dev tooling (PEP 735). Installed by default with `uv sync`.
+[dependency-groups]
 dev = ["pytest>=8.0", "ruff>=0.4"]
 
 [project.scripts]

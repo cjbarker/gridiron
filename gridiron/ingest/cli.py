@@ -3,24 +3,24 @@
 Examples::
 
     # Live CFBD backfill (needs CFBD_API_KEY), one season:
-    python -m gridiron.ingest.cli --year 2023
+    uv run gridiron-ingest --year 2023
 
     # A range of seasons:
-    python -m gridiron.ingest.cli --start 2014 --end 2024
+    uv run gridiron-ingest --start 2014 --end 2024
 
     # Bulk historical backfill: plays (with EPA/WP) from the cfbfastR parquet,
     # games/drives/rankings from the CFBD API:
-    python -m gridiron.ingest.cli --start 2002 --end 2024 --plays-source parquet
+    uv run gridiron-ingest --start 2002 --end 2024 --plays-source parquet
 
     # Fully offline backfill (no CFBD key): synthesize games from the parquet:
-    python -m gridiron.ingest.cli --start 2014 --end 2024 \
+    uv run gridiron-ingest --start 2014 --end 2024 \
         --plays-source parquet --stub-games
 
     # From on-disk JSON fixtures (no network/key):
-    python -m gridiron.ingest.cli --year 2023 --fixtures tests/fixtures/season2023
+    uv run gridiron-ingest --year 2023 --fixtures tests/fixtures/season2023
 
     # Inspect a parquet's columns without writing to the DB:
-    python -m gridiron.ingest.cli --year 2023 --inspect-parquet
+    uv run gridiron-ingest --year 2023 --inspect-parquet
 """
 
 from __future__ import annotations

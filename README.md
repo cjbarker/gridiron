@@ -38,31 +38,34 @@ scored and from what field position* for every play.
 
 ## Quick start
 
+This project uses [uv](https://docs.astral.sh/uv/). `uv sync` creates `.venv` and
+installs the project + dev tools; add `--all-extras` for the Postgres driver and the
+`polars` bulk reader.
+
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,cfbd,postgres,bulk]"
+uv sync --all-extras            # or just `uv sync` for the offline/SQLite path
 
 # 1. Bring up Postgres (or skip and use the default SQLite DB)
 docker compose up -d db
 cp .env.example .env            # set DATABASE_URL + CFBD_API_KEY
 
 # 2. Create the schema
-alembic upgrade head            # or: python -m gridiron.db.init_db
+uv run alembic upgrade head     # or: uv run gridiron-initdb
 
 # 3. Backfill (needs CFBD_API_KEY). One season, or a range:
-python -m gridiron.ingest.cli --year 2023
-python -m gridiron.ingest.cli --start 2014 --end 2024
+uv run gridiron-ingest --year 2023
+uv run gridiron-ingest --start 2014 --end 2024
 
 # 4. Serve the site
-uvicorn gridiron.api.main:app --reload   # http://127.0.0.1:8000
+uv run uvicorn gridiron.api.main:app --reload   # http://127.0.0.1:8000
 ```
 
 No API key yet? Ingest the bundled fixture and explore the app immediately:
 
 ```bash
-python -m gridiron.ingest.cli --init-db --year 2023 \
+uv run gridiron-ingest --init-db --year 2023 \
     --fixtures tests/fixtures/season2023
-uvicorn gridiron.api.main:app --reload
+uv run uvicorn gridiron.api.main:app --reload
 ```
 
 ## Bulk historical backfill (plays with EPA/WP)
@@ -73,14 +76,14 @@ while games/drives/rankings come from the API:
 
 ```bash
 # Plays from parquet, the rest from CFBD (needs CFBD_API_KEY):
-python -m gridiron.ingest.cli --start 2002 --end 2024 --plays-source parquet
+uv run gridiron-ingest --start 2002 --end 2024 --plays-source parquet
 
 # Fully offline — synthesize games from the parquet, no key required:
-python -m gridiron.ingest.cli --start 2014 --end 2024 \
+uv run gridiron-ingest --start 2014 --end 2024 \
     --plays-source parquet --stub-games
 
 # Confirm a season's parquet columns before loading (no DB writes):
-python -m gridiron.ingest.cli --year 2023 --inspect-parquet
+uv run gridiron-ingest --year 2023 --inspect-parquet
 ```
 
 The load is idempotent per season (delete-by-season + bulk insert). Once plays
@@ -131,20 +134,20 @@ Ingestion is idempotent, so re-running it just upserts. `gridiron-refresh`
 (re-)ingests the in-progress season (Aug–Jan → that year):
 
 ```bash
-gridiron-refresh                 # current season via CFBD API
-gridiron-refresh --plays-source parquet   # or pull plays from the parquet
+uv run gridiron-refresh                 # current season via CFBD API
+uv run gridiron-refresh --plays-source parquet   # or pull plays from the parquet
 ```
 
 Schedule it with cron — e.g. every 6 hours during the season:
 
 ```cron
-0 */6 * * *  cd /path/to/gridiron && /path/to/.venv/bin/gridiron-refresh >> refresh.log 2>&1
+0 */6 * * *  cd /path/to/gridiron && uv run gridiron-refresh >> refresh.log 2>&1
 ```
 
 ## Tests
 
 ```bash
-pytest          # runs fully offline against the JSON fixtures
+uv run pytest          # runs fully offline against the JSON fixtures
 ```
 
 ## Roadmap
