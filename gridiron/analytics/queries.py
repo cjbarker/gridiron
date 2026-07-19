@@ -688,8 +688,10 @@ def game_betting_lines(session: Session, game_id: int) -> list[dict[str, Any]]:
         {
             "provider": r.provider,
             "spread": r.spread,
+            "spread_open": r.spread_open,
             "formatted_spread": r.formatted_spread,
             "over_under": r.over_under,
+            "over_under_open": r.over_under_open,
             "home_moneyline": r.home_moneyline,
             "away_moneyline": r.away_moneyline,
         }
@@ -1072,3 +1074,110 @@ def winningest_coaches(
             }
         )
     return out
+
+
+# --- Closing line value (CLV) ---------------------------------------------
+
+def game_line_movement(session: Session, game_id: int) -> list[dict[str, Any]]:
+    """Opening vs closing spread/total per provider, with the movement delta.
+
+    Spread is home-perspective (negative = home favored); a negative
+    ``spread_move`` means the market moved toward the home team.
+    """
+    rows = (
+        session.execute(
+            select(BettingLine).where(BettingLine.game_id == game_id).order_by(BettingLine.provider)
+        )
+        .scalars()
+        .all()
+    )
+    out = []
+    for r in rows:
+        spread_move = (
+            round(r.spread - r.spread_open, 1)
+            if r.spread is not None and r.spread_open is not None
+            else None
+        )
+        total_move = (
+            round(r.over_under - r.over_under_open, 1)
+            if r.over_under is not None and r.over_under_open is not None
+            else None
+        )
+        out.append(
+            {
+                "provider": r.provider,
+                "spread_open": r.spread_open,
+                "spread_close": r.spread,
+                "spread_move": spread_move,
+                "total_open": r.over_under_open,
+                "total_close": r.over_under,
+                "total_move": total_move,
+            }
+        )
+    return out
+
+
+def team_clv(session: Session, team: str, season: int) -> dict[str, Any]:
+    """Closing line value for backing a team at the opening spread.
+
+    CLV points = ``team_spread_open - team_spread_close`` (positive means you'd
+    have beaten the close — the market moved toward the team after open). Uses one
+    line per game (first provider by id).
+    """
+    log = {g["game_id"]: g for g in team_game_log(session, team, season)}
+    lines: dict[int, BettingLine] = {}
+    for bl in (
+        session.execute(
+            select(BettingLine).where(BettingLine.season == season).order_by(BettingLine.id)
+        )
+        .scalars()
+    ):
+        lines.setdefault(bl.game_id, bl)
+
+    graded = 0
+    total_clv = 0.0
+    beat = 0
+    for gid, g in log.items():
+        bl = lines.get(gid)
+        if not bl or bl.spread is None or bl.spread_open is None:
+            continue
+        sign = 1 if g["home_away"] == "home" else -1
+        team_open = sign * bl.spread_open
+        team_close = sign * bl.spread
+        clv = team_open - team_close
+        total_clv += clv
+        beat += clv > 0
+        graded += 1
+    return {
+        "team": team,
+        "season": season,
+        "games_with_movement": graded,
+        "avg_clv_points": round(total_clv / graded, 2) if graded else None,
+        "beat_close_rate": round(beat / graded, 3) if graded else None,
+    }
+
+
+def clv_leaders(session: Session, season: int, limit: int = 25) -> list[dict[str, Any]]:
+    """Teams the market moved toward most after open (avg CLV backing them)."""
+    teams = {
+        t
+        for row in session.execute(
+            select(Game.home_team, Game.away_team).where(Game.season == season)
+        )
+        for t in row
+        if t
+    }
+    rows = []
+    for team in teams:
+        clv = team_clv(session, team, season)
+        if clv["games_with_movement"]:
+            rows.append(
+                {
+                    "team": team,
+                    "games": clv["games_with_movement"],
+                    "avg_clv_points": clv["avg_clv_points"],
+                    "beat_close_rate": clv["beat_close_rate"],
+                }
+            )
+    rows.sort(key=lambda r: r["avg_clv_points"], reverse=True)
+    return rows[:limit]

@@ -39,6 +39,10 @@
   <p class="muted" style="margin-top:12px;">
     <span class="pill">ATS {{ ats.ats }}</span>
     <span class="pill">O/U {{ ats.over_under }}</span>
+    {% if clv.games_with_movement %}
+    <span class="pill">CLV {{ clv.avg_clv_points }} pts</span>
+    <span class="pill">beat close {{ (clv.beat_close_rate * 100)|round(0)|int }}%</span>
+    {% endif %}
     <span class="muted">({{ ats.games_with_lines }} games with lines)</span>
   </p>
   {% endif %}

@@ -362,3 +362,22 @@ def winningest_fig(session: Session, limit: int = 15) -> str:
     )
     fig.update_xaxes(title_text="Career wins")
     return fig_to_json(_theme(fig, "Winningest coaches"))
+
+
+def clv_leaders_fig(session: Session, season: int, limit: int = 15) -> str:
+    """Bar of teams by average closing line value (market moved toward them)."""
+    rows = q.clv_leaders(session, season, limit=limit)
+    if not rows:
+        return _empty("Closing line value")
+    rows = sorted(rows, key=lambda r: r["avg_clv_points"])
+    fig = go.Figure(
+        go.Bar(
+            x=[r["avg_clv_points"] for r in rows],
+            y=[r["team"] for r in rows],
+            orientation="h",
+            marker_color=_SEQ[5],
+            hovertemplate="%{y}<br>%{x} avg CLV pts<extra></extra>",
+        )
+    )
+    fig.update_xaxes(title_text="Avg CLV (points)")
+    return fig_to_json(_theme(fig, "Closing line value (market movement toward team)"))

@@ -385,8 +385,10 @@ def flatten_betting_lines(
                 season=season,
                 provider=str(pick(ln, "provider", default="unknown")),
                 spread=_float(pick(ln, "spread")),
+                spread_open=_float(pick(ln, "spreadOpen", "spread_open")),
                 formatted_spread=pick(ln, "formattedSpread", "formatted_spread"),
                 over_under=_float(pick(ln, "overUnder", "over_under")),
+                over_under_open=_float(pick(ln, "overUnderOpen", "over_under_open")),
                 home_moneyline=_int(pick(ln, "homeMoneyline", "home_moneyline")),
                 away_moneyline=_int(pick(ln, "awayMoneyline", "away_moneyline")),
             )

@@ -251,9 +251,11 @@ class BettingLine(Base):
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), index=True)
     season: Mapped[int | None] = mapped_column(Integer, index=True)
     provider: Mapped[str] = mapped_column(String(48))
-    spread: Mapped[float | None] = mapped_column(Float)  # home-team perspective
+    spread: Mapped[float | None] = mapped_column(Float)  # closing, home-team perspective
+    spread_open: Mapped[float | None] = mapped_column(Float)  # opening, home-team perspective
     formatted_spread: Mapped[str | None] = mapped_column(String(64))
-    over_under: Mapped[float | None] = mapped_column(Float)
+    over_under: Mapped[float | None] = mapped_column(Float)  # closing total
+    over_under_open: Mapped[float | None] = mapped_column(Float)  # opening total
     home_moneyline: Mapped[int | None] = mapped_column(Integer)
     away_moneyline: Mapped[int | None] = mapped_column(Integer)
 

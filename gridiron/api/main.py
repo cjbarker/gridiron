@@ -258,6 +258,21 @@ def api_ats_record(team: str, season: int, db: Session = Depends(get_db)) -> dic
     return q.team_ats_record(db, team, season)
 
 
+@app.get("/api/games/{game_id}/line-movement")
+def api_line_movement(game_id: int, db: Session = Depends(get_db)) -> list[dict]:
+    return q.game_line_movement(db, game_id)
+
+
+@app.get("/api/analytics/clv-leaders")
+def api_clv_leaders(season: int, db: Session = Depends(get_db)) -> list[dict]:
+    return q.clv_leaders(db, season)
+
+
+@app.get("/api/teams/{team}/clv")
+def api_team_clv(team: str, season: int, db: Session = Depends(get_db)) -> dict:
+    return q.team_clv(db, team, season)
+
+
 @app.get("/api/teams/{team}/trends")
 def api_team_trends(team: str, db: Session = Depends(get_db)) -> list[dict]:
     return q.team_season_history(db, team)
@@ -536,6 +551,7 @@ def page_leaders(request: Request, season: int | None = None, db: Session = Depe
     if season is not None:
         figures["wp"] = ch.wp_leaders_fig(db, season)
         figures["player_wpa"] = ch.player_wpa_leaders_fig(db, season)
+        figures["clv"] = ch.clv_leaders_fig(db, season)
         ppa = q.ppa_leaders(db, season, min_plays=1)
     return templates.TemplateResponse(
         request=request,
@@ -664,6 +680,7 @@ def page_team(
             "splits": q.team_splits(db, team, season),
             "drive_efficiency": q.drive_efficiency(db, team, season),
             "ats": q.team_ats_record(db, team, season),
+            "clv": q.team_clv(db, team, season),
             "recruiting": q.team_recruiting(db, team, season),
             "transfers": q.team_transfers(db, team, season),
             "coaches": q.team_coaches(db, team, season),

@@ -26,13 +26,17 @@
 <div class="card">
   <h3>Betting lines</h3>
   <table>
-    <thead><tr><th>Provider</th><th>Spread</th><th>O/U</th><th>ML (home/away)</th></tr></thead>
+    <thead><tr><th>Provider</th><th>Spread (open→close)</th><th>O/U (open→close)</th><th>ML (home/away)</th></tr></thead>
     <tbody>
       {% for l in betting_lines %}
       <tr>
         <td>{{ l.provider }}</td>
-        <td>{{ l.formatted_spread or l.spread }}</td>
-        <td>{{ l.over_under if l.over_under is not none else '—' }}</td>
+        <td>
+          {% if l.spread_open is not none %}<span class="muted">{{ l.spread_open }} →</span> {% endif %}{{ l.spread if l.spread is not none else '—' }}
+        </td>
+        <td>
+          {% if l.over_under_open is not none %}<span class="muted">{{ l.over_under_open }} →</span> {% endif %}{{ l.over_under if l.over_under is not none else '—' }}
+        </td>
         <td class="muted">{{ l.home_moneyline if l.home_moneyline is not none else '—' }} / {{ l.away_moneyline if l.away_moneyline is not none else '—' }}</td>
       </tr>
       {% endfor %}
