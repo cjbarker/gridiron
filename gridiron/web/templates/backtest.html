@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Back-test{% if season %} — {{ season }}{% endif %}{% endblock %}
+{% block content %}
+<form method="get" action="/predict/backtest" class="card">
+  <label class="muted">Season</label>
+  <select name="season">
+    {% for s in seasons %}<option value="{{ s }}" {% if s == season %}selected{% endif %}>{{ s }}</option>{% endfor %}
+  </select>
+  <label class="muted">Model</label>
+  <select name="model">
+    <option value="ratings" {% if model == 'ratings' %}selected{% endif %}>Ratings (SRS)</option>
+    <option value="logistic" {% if model == 'logistic' %}selected{% endif %} {% if not ml_available %}disabled{% endif %}>ML logistic{% if not ml_available %} (install ml extra){% endif %}</option>
+  </select>
+  <button type="submit">Run back-test</button>
+  <span class="muted">walk-forward · leakage-safe</span>
+</form>
+
+{% if result %}
+{% set R = result %}
+{% if R.requested_model != R.model %}
+<div class="card"><p class="muted">Requested “{{ R.requested_model }}” but ran “{{ R.model }}” (ML model unavailable).</p></div>
+{% endif %}
+<div class="card">
+  <h2>{{ season }} — {{ 'ML logistic' if R.model == 'logistic' else 'Ratings' }} engine</h2>
+  {% if R.games %}
+  <div class="stat-grid">
+    <div class="stat"><div class="n">{{ (R.accuracy * 100)|round(1) }}%</div><div class="l">Winner accuracy ({{ R.games }} games)</div></div>
+    <div class="stat"><div class="n">{{ R.mae }}</div><div class="l">Margin MAE (points)</div></div>
+    <div class="stat"><div class="n">{{ R.rmse }}</div><div class="l">Margin RMSE</div></div>
+    <div class="stat"><div class="n">{{ R.brier }}</div><div class="l">Brier score (lower = better)</div></div>
+    <div class="stat"><div class="n">{{ R.log_loss }}</div><div class="l">Log loss</div></div>
+  </div>
+  {% else %}
+  <p class="muted">Not enough games with prior history to back-test this season (needs a fuller backfill).</p>
+  {% endif %}
+</div>
+
+{% if R.market %}
+<div class="card">
+  <h3>Vs. the market (closing line)</h3>
+  <div class="stat-grid">
+    <div class="stat"><div class="n">{{ (R.market.accuracy * 100)|round(1) }}%</div><div class="l">Market accuracy ({{ R.market.games }} games)</div></div>
+    <div class="stat"><div class="n">{{ R.market.mae }}</div><div class="l">Market margin MAE</div></div>
+    <div class="stat"><div class="n">{{ R.market.ats_wins }}–{{ R.market.ats_losses }}{% if R.market.ats_pushes %}–{{ R.market.ats_pushes }}{% endif %}</div><div class="l">Our record vs the spread</div></div>
+    <div class="stat"><div class="n">{{ (R.market.ats_rate * 100)|round(1) if R.market.ats_rate is not none else '—' }}%</div><div class="l">ATS win rate</div></div>
+  </div>
+</div>
+{% else %}
+<div class="card"><p class="muted">No betting lines ingested for {{ season }} — market benchmark unavailable.</p></div>
+{% endif %}
+
+<div class="chart-grid">
+  <div class="card"><div class="chart" id="chart-cal"></div></div>
+  <div class="card"><div class="chart" id="chart-summary"></div></div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if figures %}
+<script src="/vendor/plotly.min.js"></script>
+<script>
+  const opts = {displayModeBar: false, responsive: true};
+  const cal = JSON.parse({{ figures.calibration|tojson }});
+  Plotly.newPlot(document.getElementById('chart-cal'), cal.data, cal.layout, opts);
+  const summary = JSON.parse({{ figures.summary|tojson }});
+  Plotly.newPlot(document.getElementById('chart-summary'), summary.data, summary.layout, opts);
+</script>
+{% endif %}
+{% endblock %}

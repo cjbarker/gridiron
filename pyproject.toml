@@ -22,14 +22,17 @@ dependencies = [
 
 # Optional extras enable production/bulk paths (the app runs offline without them):
 #   postgres -> PostgreSQL driver   ·   bulk -> fast parquet reader for backfill
+#   ml       -> logistic-regression prediction engine (the ratings engine needs no extras)
 # Enable with: uv sync --extra postgres   (or `uv sync --all-extras`)
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.1"]
 bulk = ["polars>=0.20"]
+ml = ["scikit-learn>=1.4"]
 
-# Dev tooling (PEP 735). Installed by default with `uv sync`.
+# Dev tooling (PEP 735). Installed by default with `uv sync`. The prediction tests
+# need the ML engine, so include scikit-learn here too.
 [dependency-groups]
-dev = ["pytest>=8.0", "ruff>=0.4"]
+dev = ["pytest>=8.0", "ruff>=0.4", "scikit-learn>=1.4"]
 
 [project.scripts]
 gridiron-ingest = "gridiron.ingest.cli:main"

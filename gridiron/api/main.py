@@ -33,7 +33,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from gridiron.analytics import charts as ch
+from gridiron.analytics import predict as pred
 from gridiron.analytics import queries as q
+from gridiron.analytics.backtest import backtest_season
 from gridiron.analytics.filters import PlayFilter
 from gridiron.db.models import (
     Drive,
@@ -367,6 +369,37 @@ def api_compare(a: str, b: str, season: int, db: Session = Depends(get_db)) -> d
     return q.team_compare(db, a, b, season)
 
 
+@app.get("/api/predict")
+def api_predict(
+    a: str,
+    season_a: int,
+    b: str,
+    season_b: int,
+    neutral: bool = False,
+    home: str = "a",
+    model: str = "ratings",
+    era_adjusted: bool | None = None,
+    sims: int = pred.DEFAULT_SIMS,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Simulate a matchup between two (team, season) sides. See analytics.predict."""
+    result = pred.predict_matchup(
+        db, a, season_a, b, season_b,
+        neutral=neutral, home=home, model=model, era_adjusted=era_adjusted,
+        sims=max(100, min(sims, 50000)),
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="no ratings for one of the teams/seasons")
+    result.pop("margins", None)  # keep the JSON payload small
+    return result
+
+
+@app.get("/api/predict/backtest")
+def api_backtest(season: int, model: str = "ratings", db: Session = Depends(get_db)) -> dict:
+    """Walk-forward back-test of the prediction engine for a season."""
+    return backtest_season(db, season, model=model)
+
+
 # --- HTML pages -----------------------------------------------------------
 
 
@@ -589,6 +622,87 @@ def page_compare(
             "b": b,
             "comparison": comparison,
             "figure": figure,
+        },
+    )
+
+
+@app.get("/predict", response_class=HTMLResponse)
+def page_predict(
+    request: Request,
+    a: str | None = None,
+    season_a: int | None = None,
+    b: str | None = None,
+    season_b: int | None = None,
+    neutral: bool = False,
+    home: str = "a",
+    model: str = "ratings",
+    era_adjusted: bool | None = None,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    seasons = _all_seasons(db)
+    default_season = seasons[0] if seasons else None
+    season_a = season_a or default_season
+    season_b = season_b or default_season
+    teams_a = q.list_teams_with_data(db, season_a) if season_a is not None else []
+    teams_b = q.list_teams_with_data(db, season_b) if season_b is not None else []
+
+    result = figures = h2h = None
+    if a and b and season_a is not None and season_b is not None:
+        result = pred.predict_matchup(
+            db, a, season_a, b, season_b,
+            neutral=neutral, home=home, model=model, era_adjusted=era_adjusted,
+        )
+        if result is not None:
+            comp = result["prediction"]["components"]
+            figures = {
+                "distribution": ch.predict_distribution_fig(result["margins"], a, b),
+                "components": ch.predict_components_fig(a, b, comp["a"], comp["b"]),
+            }
+            if season_a == season_b:
+                h2h = q.team_compare(db, a, b, season_a)["head_to_head"]
+    return templates.TemplateResponse(
+        request=request,
+        name="predict.html",
+        context={
+            "seasons": seasons,
+            "teams_a": teams_a,
+            "teams_b": teams_b,
+            "a": a, "b": b, "season_a": season_a, "season_b": season_b,
+            "neutral": neutral, "home": home, "model": model,
+            "ml_available": pred.ml_available(),
+            "result": result,
+            "figures": figures,
+            "head_to_head": h2h,
+        },
+    )
+
+
+@app.get("/predict/backtest", response_class=HTMLResponse)
+def page_backtest(
+    request: Request,
+    season: int | None = None,
+    model: str = "ratings",
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    seasons = _all_seasons(db)
+    season = _current_season(db, season)
+    result = figures = None
+    if season is not None:
+        result = backtest_season(db, season, model=model)
+        figures = {
+            "calibration": ch.calibration_fig(result["calibration"]),
+            "summary": ch.backtest_summary_fig(result),
+        }
+    return templates.TemplateResponse(
+        request=request,
+        name="backtest.html",
+        context={
+            "seasons": seasons,
+            "season": season,
+            "model": model,
+            "ml_available": pred.ml_available(),
+            "result": result,
+            "figures": figures,
         },
     )
 

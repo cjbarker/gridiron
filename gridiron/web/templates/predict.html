@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Predict{% if a and b %} — {{ a }} vs {{ b }}{% endif %}{% endblock %}
+{% block content %}
+<form method="get" action="/predict" class="card">
+  <div>
+    <label class="muted">Team A</label>
+    <select name="a">
+      <option value="">—</option>
+      {% for t in teams_a %}<option value="{{ t.team }}" {% if t.team == a %}selected{% endif %}>{{ t.team }}</option>{% endfor %}
+    </select>
+    <select name="season_a">
+      {% for s in seasons %}<option value="{{ s }}" {% if s == season_a %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+    <span class="muted">vs</span>
+    <label class="muted">Team B</label>
+    <select name="b">
+      <option value="">—</option>
+      {% for t in teams_b %}<option value="{{ t.team }}" {% if t.team == b %}selected{% endif %}>{{ t.team }}</option>{% endfor %}
+    </select>
+    <select name="season_b">
+      {% for s in seasons %}<option value="{{ s }}" {% if s == season_b %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+  </div>
+  <div style="margin-top:10px;">
+    <label class="muted">Home</label>
+    <select name="home">
+      <option value="a" {% if home == 'a' %}selected{% endif %}>Team A</option>
+      <option value="b" {% if home == 'b' %}selected{% endif %}>Team B</option>
+    </select>
+    <label class="muted"><input type="checkbox" name="neutral" value="true" {% if neutral %}checked{% endif %}> Neutral site</label>
+    <label class="muted">Model</label>
+    <select name="model">
+      <option value="ratings" {% if model == 'ratings' %}selected{% endif %}>Ratings (SRS)</option>
+      <option value="logistic" {% if model == 'logistic' %}selected{% endif %} {% if not ml_available %}disabled{% endif %}>ML logistic{% if not ml_available %} (install ml extra){% endif %}</option>
+    </select>
+    <button type="submit">Simulate</button>
+  </div>
+</form>
+
+{% if result %}
+{% set P = result.prediction %}{% set S = result.simulation %}
+{% set fav = a if P.proj_margin >= 0 else b %}
+<div class="card">
+  <h2>
+    <a href="/teams/{{ a }}?season={{ season_a }}">{{ a }}</a> <span class="muted">{{ season_a }}</span>
+    <span class="muted">vs</span>
+    <a href="/teams/{{ b }}?season={{ season_b }}">{{ b }}</a> <span class="muted">{{ season_b }}</span>
+    {% if P.era_adjusted %}<span class="pill">era-adjusted</span>{% endif %}
+    <span class="pill">{{ 'ML logistic' if P.model == 'logistic' else 'Ratings' }}</span>
+  </h2>
+  {% if result.ml_fell_back %}<p class="muted">ML model unavailable — fell back to the ratings engine.</p>{% endif %}
+  <div class="stat-grid">
+    <div class="stat"><div class="n">{{ P.score_a }}–{{ P.score_b }}</div><div class="l">Projected score</div></div>
+    <div class="stat"><div class="n">{{ (P.win_prob_a * 100)|round(0)|int }}%</div><div class="l">{{ a }} win probability</div></div>
+    <div class="stat"><div class="n">{{ fav }} by {{ P.proj_margin|abs }}</div><div class="l">Projected margin</div></div>
+    <div class="stat"><div class="n">{{ (S.upset_prob * 100)|round(0)|int }}%</div><div class="l">Upset odds</div></div>
+  </div>
+  <p class="muted" style="margin-top:10px;">
+    Monte-Carlo of {{ '{:,}'.format(S.sims) }} games · {{ a }} wins {{ (S.win_prob_a * 100)|round(1) }}% ·
+    likely margin {{ S.margin_p5 }}…{{ S.margin_p95 }} ·
+    {% if P.neutral %}neutral site{% else %}home: {{ a if P.home == 'a' else b }} (+{{ P.hfa }}){% endif %}
+  </p>
+</div>
+
+<div class="card">
+  <h3>Why — rating components</h3>
+  <table>
+    <thead><tr><th>Component</th><th>{{ a }}</th><th>{{ b }}</th></tr></thead>
+    <tbody>
+      <tr><td>SRS (power rating)</td><td>{{ P.components.a.srs }}</td><td>{{ P.components.b.srs }}</td></tr>
+      <tr><td>Adj. offense</td><td>{{ P.components.a.adj_off }}</td><td>{{ P.components.b.adj_off }}</td></tr>
+      <tr><td>Adj. defense</td><td>{{ P.components.a.adj_def }}</td><td>{{ P.components.b.adj_def }}</td></tr>
+      <tr><td>Strength of schedule</td><td>{{ P.components.a.sos }}</td><td>{{ P.components.b.sos }}</td></tr>
+      <tr><td>Recent form (last 3)</td><td>{{ P.components.a.form }}</td><td>{{ P.components.b.form }}</td></tr>
+      <tr><td>Points / allowed</td><td>{{ P.components.a.ppg }} / {{ P.components.a.papg }}</td><td>{{ P.components.b.ppg }} / {{ P.components.b.papg }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="chart-grid">
+  <div class="card"><div class="chart" id="chart-dist"></div></div>
+  <div class="card"><div class="chart" id="chart-comp"></div></div>
+</div>
+
+{% if head_to_head %}
+<div class="card">
+  <h3>Actual head-to-head ({{ season_a }})</h3>
+  <table>
+    <thead><tr><th>Wk</th><th>Matchup</th><th>Score</th></tr></thead>
+    <tbody>
+      {% for g in head_to_head %}
+      <tr>
+        <td class="muted">{{ g.week }}</td>
+        <td>{{ g.away_team }} @ {{ g.home_team }}</td>
+        <td class="score"><a href="/games/{{ g.game_id }}">{{ g.away_points }}–{{ g.home_points }}</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card">
+  <p class="muted">
+    Predictions use full-season ratings for exploration (retrodictive). For a leakage-safe
+    measure of accuracy, see the <a href="/predict/backtest?season={{ season_a }}&model={{ P.model }}">back-test</a>.
+    Cross-era results are era-relative, not literal.
+  </p>
+</div>
+{% elif a and b %}
+<div class="card"><p class="muted">No ratings for that team/season — pick teams that played the selected seasons (change a season and re-submit to refresh its team list).</p></div>
+{% else %}
+<div class="card"><p class="muted">Pick two teams (and seasons) to simulate a matchup — same season or cross-era.</p></div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if figures %}
+<script src="/vendor/plotly.min.js"></script>
+<script>
+  const opts = {displayModeBar: false, responsive: true};
+  const dist = JSON.parse({{ figures.distribution|tojson }});
+  Plotly.newPlot(document.getElementById('chart-dist'), dist.data, dist.layout, opts);
+  const comp = JSON.parse({{ figures.components|tojson }});
+  Plotly.newPlot(document.getElementById('chart-comp'), comp.data, comp.layout, opts);
+</script>
+{% endif %}
+{% endblock %}

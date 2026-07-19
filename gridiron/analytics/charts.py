@@ -374,3 +374,75 @@ def clv_leaders_fig(session: Session, season: int, limit: int = 15) -> str:
         empty_title="Closing line value", x_title="Avg CLV (points)",
         color=_SEQ[5], hover="%{y}<br>%{x} avg CLV pts<extra></extra>",
     )
+
+
+# --- Prediction / back-testing figures ------------------------------------
+
+
+def predict_distribution_fig(margins: list[float], a_label: str, b_label: str) -> str:
+    """Histogram of simulated margins (A perspective); a 0-line splits the winners."""
+    if not margins:
+        return _empty("Simulated margins")
+    fig = go.Figure(
+        go.Histogram(
+            x=margins, nbinsx=40, marker_color=_ACCENT,
+            hovertemplate="margin %{x}<br>%{y} sims<extra></extra>",
+        )
+    )
+    fig.add_vline(x=0, line_dash="dot", line_color=_MUTED)
+    fig.update_xaxes(title_text=f"Simulated margin  ({a_label} − {b_label})")
+    fig.update_yaxes(title_text="Simulations")
+    return fig_to_json(_theme(fig, "Monte-Carlo outcome distribution"))
+
+
+def predict_components_fig(a_label: str, b_label: str, comp_a: dict, comp_b: dict) -> str:
+    """Grouped bar of the two teams' rating components (the model's 'why')."""
+    cats = ["SRS", "Adj offense", "Adj defense", "Form"]
+    keys = ["srs", "adj_off", "adj_def", "form"]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name=a_label, x=cats, y=[comp_a.get(k, 0) for k in keys], marker_color=_ACCENT))
+    fig.add_trace(go.Bar(name=b_label, x=cats, y=[comp_b.get(k, 0) for k in keys], marker_color=_SEQ[2]))
+    fig.update_layout(barmode="group")
+    fig.update_yaxes(title_text="Points vs average")
+    return fig_to_json(_theme(fig, "Rating components"))
+
+
+def calibration_fig(bins: list[dict]) -> str:
+    """Reliability curve: predicted vs actual home-win rate per probability bin."""
+    if not bins:
+        return _empty("Calibration", "No back-test games")
+    xs = [round((b["bin_lo"] + b["bin_hi"]) / 2, 2) for b in bins]
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(x=[0, 1], y=[0, 1], mode="lines", name="Perfect",
+                   line=dict(color=_MUTED, dash="dot"))
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=xs, y=[b["actual"] for b in bins], mode="lines+markers", name="Model",
+            line=dict(color=_ACCENT, width=3),
+            hovertemplate="pred %{x}<br>actual %{y}<extra></extra>",
+        )
+    )
+    fig.update_xaxes(title_text="Predicted win probability", range=[0, 1])
+    fig.update_yaxes(title_text="Actual win rate", range=[0, 1])
+    return fig_to_json(_theme(fig, "Calibration"))
+
+
+def backtest_summary_fig(result: dict) -> str:
+    """Grouped bar comparing the model to the market on winner accuracy."""
+    market = result.get("market") or {}
+    labels, model_vals, market_vals = [], [], []
+    if result.get("accuracy") is not None:
+        labels.append("Winner accuracy")
+        model_vals.append(round(result["accuracy"] * 100, 1))
+        market_vals.append(round(market["accuracy"] * 100, 1) if market.get("accuracy") is not None else None)
+    if not labels:
+        return _empty("Model vs market", "No back-test games")
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name="Model", x=labels, y=model_vals, marker_color=_ACCENT))
+    if any(v is not None for v in market_vals):
+        fig.add_trace(go.Bar(name="Market (closing line)", x=labels, y=market_vals, marker_color=_SEQ[2]))
+    fig.update_layout(barmode="group")
+    fig.update_yaxes(title_text="%", range=[0, 100])
+    return fig_to_json(_theme(fig, "Model vs market"))

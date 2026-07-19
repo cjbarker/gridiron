@@ -104,6 +104,11 @@ enriches those same rows.
 - `/standings?season=&conference=` — conference standings (conference + overall)
 - `/leaders?season=` — win-probability, **player WPA**, **CLV**, and PPA/EPA leaderboards
 - `/coaches` · `/coaches/{name}` — winningest-coaches board + a coach career page
+- `/predict?a=&season_a=&b=&season_b=` — **matchup simulator**: pick two (team, season)
+  sides — same season or **cross-era** — for a projected score, win probability, upset
+  odds, a Monte-Carlo outcome distribution, and a rating-component breakdown
+- `/predict/backtest?season=&model=` — **walk-forward back-test** of the predictor:
+  winner accuracy, margin MAE/RMSE, Brier/calibration, and a **closing-line benchmark**
 
 Team pages also carry **drive-level** stats (scoring %, points/yards/plays per
 drive + a drive-outcome chart), an **against-the-spread / over-under** record, a
@@ -127,6 +132,8 @@ no CDN or build step.
 - `GET /api/analytics/scoring-by-field-position?season=2023`
 - `GET /api/analytics/scoring-types` · `/fg-success` · `/play-type-mix` · `/ppa-leaders` · `/team-scoring`
 - `GET /api/analytics/success-rate` · `/explosiveness` · `/ppa-by-down` (params: `season`, optional `team`)
+- `GET /api/predict?a=Georgia&season_a=2023&b=Alabama&season_b=2023` — matchup projection + Monte-Carlo simulation
+- `GET /api/predict/backtest?season=2023&model=ratings` — walk-forward validation metrics + market benchmark
 
 ## Keeping the current season fresh
 
@@ -185,6 +192,40 @@ docker compose -f docker-compose.prod.yml run --rm web \
 > it does not push to a live host. Point your platform (Fly.io, Render, a VPS, …) at
 > the `Dockerfile` to go live.
 
+## Game prediction & back-testing
+
+The `/predict` page simulates a matchup between any two `(team, season)` sides —
+same season or **cross-era** (2013 Alabama vs 2023 Georgia) — from past data only.
+Two engines share one interface:
+
+- **Ratings (default, no extra deps):** a Simple Rating System (SRS) solved from game
+  margins + strength-of-schedule, plus opponent-adjusted offense/defense so it
+  projects an actual score. Home-field is fit from the season's games. Cross-era sides
+  are z-scored within their own season so the comparison is era-relative.
+- **ML logistic (opt-in):** a `scikit-learn` logistic-regression win model trained on
+  past games from the rating-diff features. Enable with `uv sync --extra ml`; without
+  it the page falls back to the ratings engine.
+
+Every prediction shows its **component breakdown** (SRS, adjusted offense/defense,
+strength of schedule, form) and a **Monte-Carlo** distribution (win %, score band,
+upset odds) — the outcome is simulated, not a single number. The betting market is
+**not** a model input; it's the yardstick.
+
+`/predict/backtest` validates the model honestly: it replays a season **week by week**,
+building ratings/training the model from prior weeks only (leakage-safe), and reports
+winner accuracy, margin MAE/RMSE, Brier/log-loss, a calibration curve, and — where
+betting lines exist — the model's accuracy and **against-the-spread record vs the
+closing line**.
+
+```bash
+uv sync --extra ml   # optional: enables the logistic engine (ratings works without it)
+```
+
+> Honesty notes: the matchup page uses full-season ratings for exploration
+> (retrodictive), while the back-test is strictly walk-forward. Cross-era results are
+> era-relative, not literal. Meaningful ratings need a real backfill — the bundled
+> fixture is enough to exercise every page, not to rank teams.
+
 ## Roadmap
 
 - **M1 (done):** ingestion pipeline + schema + analytics core + offline tests.
@@ -204,5 +245,10 @@ docker compose -f docker-compose.prod.yml run --rm web \
 - **M8 (done):** tooling migrated to uv (`uv sync` + `uv.lock` + `uv run`).
 - **M9 (done):** public read-only deploy — production Dockerfile + compose,
   migrate/seed/serve entrypoint, and a `/healthz` probe.
+- **M10 (done):** codebase simplification pass — shared helpers, one leaderboard-bar
+  builder, and a CLV N+1 removed, with no behavior change.
+- **M11 (done):** game-prediction / matchup simulator — SRS ratings + opt-in ML
+  logistic engine, cross-era Monte-Carlo outcomes, and a walk-forward back-test page
+  with a closing-line benchmark.
 - **TODO:** wire the Postgres profile + operator backfill for full production data,
   and point a host (Fly.io / Render / VPS) at the image to go live.
