@@ -98,9 +98,14 @@ enriches those same rows.
 - `/players/compare?a=…&b=…` — two players' stat lines side by side
 - `/compare?a=Georgia&b=Alabama&season=2023` — two teams side by side + head-to-head
 
+- `/standings?season=&conference=` — conference standings (conference + overall)
+- `/leaders?season=` — win-probability and PPA/EPA leaderboards
+
 Team pages also carry **drive-level** stats (scoring %, points/yards/plays per
-drive + a drive-outcome chart), an **against-the-spread / over-under** record, and a
-**season-over-season** trend chart. Game pages show the **betting lines**.
+drive + a drive-outcome chart), an **against-the-spread / over-under** record, a
+**season-over-season** trend chart, and a **recruiting-class rank + transfer-portal**
+panel (in/out). Game pages show the **betting lines** and a **win-probability**
+game-flow chart.
 
 Charts are [Plotly](https://plotly.com/python/); the JS bundle is served from the
 installed `plotly` package at `/vendor/plotly.min.js`, so charts work offline with
@@ -149,5 +154,7 @@ pytest          # runs fully offline against the JSON fixtures
   command (+ cron) for the current season.
 - **M4 (done):** player-vs-player comparison, drive-level analytics, betting-line
   ingestion (lines + ATS/OU records), and season-over-season trends.
-- **Next ideas:** recruiting/transfer data, win-probability charts, conference
-  standings, and a public read-only deploy.
+- **M5 (done):** win-probability charts (game flow + leaderboard), conference
+  standings, and recruiting-ranking + transfer-portal ingestion.
+- **Next ideas:** a public read-only deploy, player win-probability added, coaching
+  records, and betting-market CLV analysis.

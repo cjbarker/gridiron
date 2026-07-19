@@ -1,0 +1,32 @@
+[
+  {
+    "season": 2023,
+    "firstName": "Domani",
+    "lastName": "Jackson",
+    "position": "CB",
+    "origin": "USC",
+    "destination": "Alabama",
+    "rating": 0.94,
+    "stars": 4
+  },
+  {
+    "season": 2023,
+    "firstName": "Justice",
+    "lastName": "Haynes",
+    "position": "RB",
+    "origin": "Alabama",
+    "destination": "Michigan",
+    "rating": 0.92,
+    "stars": 4
+  },
+  {
+    "season": 2023,
+    "firstName": "Rara",
+    "lastName": "Thomas",
+    "position": "WR",
+    "origin": "Mississippi State",
+    "destination": "Georgia",
+    "rating": 0.90,
+    "stars": 4
+  }
+]

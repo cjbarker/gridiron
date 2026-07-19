@@ -24,6 +24,8 @@ from gridiron.db.models import (
     PlayerGameStat,
     Ranking,
     TeamGameStat,
+    TeamRecruitingRank,
+    Transfer,
 )
 from gridiron.db.session import session_scope
 from gridiron.ingest import transforms as tf
@@ -51,6 +53,7 @@ def ingest_season(
     with_stats: bool = True,
     with_rosters: bool = True,
     with_lines: bool = True,
+    with_recruiting: bool = True,
     plays_source: str = "api",
     parquet_loader: Callable[[int], list[dict]] | None = None,
     stub_games: bool = False,
@@ -83,6 +86,8 @@ def ingest_season(
             _ingest_box_scores(source, year, season_types, session, report, game_ids)
         if with_lines:
             _ingest_betting_lines(source, year, season_types, session, report, game_ids)
+        if with_recruiting:
+            _ingest_recruiting(source, year, session, report)
         _ingest_rankings(source, year, session, report)
     return report
 
@@ -313,6 +318,28 @@ def _ingest_betting_lines(
                 seen.add(key)
                 session.add(row)
                 report.bump("betting_lines")
+    session.flush()
+
+
+def _ingest_recruiting(
+    source: DataSource, year: int, session: Session, report: IngestReport
+) -> None:
+    # Replace this season's recruiting rows for clean idempotency.
+    session.query(TeamRecruitingRank).filter(TeamRecruitingRank.season == year).delete(
+        synchronize_session=False
+    )
+    session.query(Transfer).filter(Transfer.season == year).delete(synchronize_session=False)
+    seen: set[str] = set()
+    for rec in source.recruiting_teams(year):
+        row = tf.to_team_recruiting(year, rec)
+        if row.team in seen:
+            continue
+        seen.add(row.team)
+        session.add(row)
+        report.bump("recruiting_teams")
+    for rec in source.transfers(year):
+        session.add(tf.to_transfer(year, rec))
+        report.bump("transfers")
     session.flush()
 
 

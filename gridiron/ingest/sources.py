@@ -40,6 +40,8 @@ class DataSource(Protocol):
     def rankings(self, year: int) -> list[dict[str, Any]]: ...
     def rosters(self, year: int) -> list[dict[str, Any]]: ...
     def betting_lines(self, year: int, season_type: str) -> list[dict[str, Any]]: ...
+    def recruiting_teams(self, year: int) -> list[dict[str, Any]]: ...
+    def transfers(self, year: int) -> list[dict[str, Any]]: ...
     def weeks(self, year: int, season_type: str) -> list[int]: ...
 
 
@@ -113,6 +115,12 @@ class CFBDSource:
     def betting_lines(self, year: int, season_type: str) -> list[dict[str, Any]]:
         return self._get("/lines", year=year, seasonType=season_type)
 
+    def recruiting_teams(self, year: int) -> list[dict[str, Any]]:
+        return self._get("/recruiting/teams", year=year)
+
+    def transfers(self, year: int) -> list[dict[str, Any]]:
+        return self._get("/player/portal", year=year)
+
     def weeks(self, year: int, season_type: str) -> list[int]:
         """Distinct weeks that actually have games (avoids blind 1..20 loops)."""
         games = self.games(year, season_type)
@@ -169,6 +177,12 @@ class FixtureSource:
     def betting_lines(self, year: int, season_type: str) -> list[dict[str, Any]]:
         return self._load("lines")
 
+    def recruiting_teams(self, year: int) -> list[dict[str, Any]]:
+        return self._load("recruiting_teams")
+
+    def transfers(self, year: int) -> list[dict[str, Any]]:
+        return self._load("transfers")
+
     def weeks(self, year: int, season_type: str) -> list[int]:
         # Return one nominal week; the fixture source ignores week filtering.
         return [1] if self.games(year, season_type) else []
@@ -209,6 +223,12 @@ class EmptySource:
         return []
 
     def betting_lines(self, year: int, season_type: str) -> list[dict[str, Any]]:
+        return []
+
+    def recruiting_teams(self, year: int) -> list[dict[str, Any]]:
+        return []
+
+    def transfers(self, year: int) -> list[dict[str, Any]]:
         return []
 
     def weeks(self, year: int, season_type: str) -> list[int]:

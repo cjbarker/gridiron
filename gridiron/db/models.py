@@ -257,3 +257,34 @@ class BettingLine(Base):
     __table_args__ = (
         UniqueConstraint("game_id", "provider", name="uq_betting_line"),
     )
+
+
+class TeamRecruitingRank(Base):
+    """A team's recruiting-class ranking for a cycle (CFBD /recruiting/teams)."""
+
+    __tablename__ = "team_recruiting_ranks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    season: Mapped[int] = mapped_column(Integer, index=True)
+    team: Mapped[str] = mapped_column(String(128), index=True)
+    rank: Mapped[int | None] = mapped_column(Integer)
+    points: Mapped[float | None] = mapped_column(Float)
+
+    __table_args__ = (
+        UniqueConstraint("season", "team", name="uq_team_recruiting"),
+    )
+
+
+class Transfer(Base):
+    """A transfer-portal entry (CFBD /player/portal)."""
+
+    __tablename__ = "transfers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    season: Mapped[int] = mapped_column(Integer, index=True)
+    player: Mapped[str | None] = mapped_column(String(160))
+    position: Mapped[str | None] = mapped_column(String(16))
+    origin: Mapped[str | None] = mapped_column(String(128), index=True)
+    destination: Mapped[str | None] = mapped_column(String(128), index=True)
+    rating: Mapped[float | None] = mapped_column(Float)
+    stars: Mapped[int | None] = mapped_column(Integer)

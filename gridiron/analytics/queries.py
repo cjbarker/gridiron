@@ -23,6 +23,8 @@ from gridiron.db.models import (
     Player,
     PlayerGameStat,
     Ranking,
+    TeamRecruitingRank,
+    Transfer,
 )
 
 # Field-position buckets by yards-to-goal (distance to opponent end zone).
@@ -895,3 +897,46 @@ def conference_standings(
         reverse=True,
     )
     return standings
+
+
+# --- Recruiting & transfers -----------------------------------------------
+
+def team_recruiting(session: Session, team: str, season: int) -> dict[str, Any] | None:
+    """A team's recruiting-class rank/points for a season, if ingested."""
+    row = session.execute(
+        select(TeamRecruitingRank).where(
+            TeamRecruitingRank.season == season, TeamRecruitingRank.team == team
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return None
+    return {"season": season, "team": team, "rank": row.rank, "points": row.points}
+
+
+def team_transfers(session: Session, team: str, season: int) -> dict[str, Any]:
+    """Transfer-portal moves for a team: incoming (destination) and outgoing (origin)."""
+
+    def _rows(stmt):
+        return [
+            {
+                "player": t.player,
+                "position": t.position,
+                "origin": t.origin,
+                "destination": t.destination,
+                "stars": t.stars,
+                "rating": t.rating,
+            }
+            for t in session.execute(stmt).scalars()
+        ]
+
+    incoming = _rows(
+        select(Transfer)
+        .where(Transfer.season == season, Transfer.destination == team)
+        .order_by(Transfer.stars.desc().nullslast(), Transfer.player)
+    )
+    outgoing = _rows(
+        select(Transfer)
+        .where(Transfer.season == season, Transfer.origin == team)
+        .order_by(Transfer.stars.desc().nullslast(), Transfer.player)
+    )
+    return {"incoming": incoming, "outgoing": outgoing}

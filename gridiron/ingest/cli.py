@@ -103,6 +103,9 @@ def main(argv: list[str] | None = None) -> int:
         "--no-lines", action="store_true", help="Skip betting-line ingestion."
     )
     parser.add_argument(
+        "--no-recruiting", action="store_true", help="Skip recruiting/transfer ingestion."
+    )
+    parser.add_argument(
         "--init-db", action="store_true", help="Create tables before ingesting."
     )
     parser.add_argument(
@@ -131,6 +134,7 @@ def main(argv: list[str] | None = None) -> int:
             with_stats=not args.no_stats,
             with_rosters=not args.no_rosters,
             with_lines=not args.no_lines,
+            with_recruiting=not args.no_recruiting,
             plays_source=args.plays_source,
             parquet_loader=loader if args.plays_source == "parquet" else None,
             stub_games=args.stub_games,

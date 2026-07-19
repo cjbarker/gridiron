@@ -71,6 +71,33 @@
   </div>
 </div>
 
+{% if recruiting or transfers.incoming or transfers.outgoing %}
+<div class="card">
+  <h3>Recruiting &amp; transfers</h3>
+  {% if recruiting %}
+  <p class="muted">
+    Recruiting class:
+    <span class="pill">#{{ recruiting.rank if recruiting.rank is not none else '—' }}</span>
+    {% if recruiting.points is not none %}<span class="muted">{{ recruiting.points }} pts</span>{% endif %}
+  </p>
+  {% endif %}
+  <div class="chart-grid">
+    <div>
+      <h4 class="muted">Incoming ({{ transfers.incoming|length }})</h4>
+      {% for t in transfers.incoming %}
+        <div>{{ t.player }} <span class="muted">{{ t.position }}{% if t.stars %} · {{ t.stars }}★{% endif %}{% if t.origin %} · from {{ t.origin }}{% endif %}</span></div>
+      {% else %}<p class="muted">None</p>{% endfor %}
+    </div>
+    <div>
+      <h4 class="muted">Outgoing ({{ transfers.outgoing|length }})</h4>
+      {% for t in transfers.outgoing %}
+        <div>{{ t.player }} <span class="muted">{{ t.position }}{% if t.stars %} · {{ t.stars }}★{% endif %}{% if t.destination %} · to {{ t.destination }}{% endif %}</span></div>
+      {% else %}<p class="muted">None</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% if 'trends' in figures %}
 <div class="card">
   <h3>Season-over-season</h3>

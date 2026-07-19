@@ -21,6 +21,8 @@ from gridiron.db.models import (
     Ranking,
     Team,
     TeamGameStat,
+    TeamRecruitingRank,
+    Transfer,
     Venue,
 )
 
@@ -360,6 +362,30 @@ def flatten_betting_lines(
             )
         )
     return rows
+
+
+def to_team_recruiting(year: int, record: dict[str, Any]) -> TeamRecruitingRank:
+    return TeamRecruitingRank(
+        season=_int(pick(record, "year", "season")) or year,
+        team=str(pick(record, "team", default="Unknown")),
+        rank=_int(pick(record, "rank")),
+        points=_float(pick(record, "points")),
+    )
+
+
+def to_transfer(year: int, record: dict[str, Any]) -> Transfer:
+    first = pick(record, "firstName", "first_name", default="")
+    last = pick(record, "lastName", "last_name", default="")
+    name = pick(record, "player") or " ".join(x for x in [first, last] if x) or None
+    return Transfer(
+        season=_int(pick(record, "season", "year")) or year,
+        player=name,
+        position=pick(record, "position"),
+        origin=pick(record, "origin"),
+        destination=pick(record, "destination"),
+        rating=_float(pick(record, "rating")),
+        stars=_int(pick(record, "stars")),
+    )
 
 
 def _stat_str(v: Any) -> str | None:

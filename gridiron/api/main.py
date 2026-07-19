@@ -263,6 +263,14 @@ def api_standings(season: int, conference: str, db: Session = Depends(get_db)) -
     return q.conference_standings(db, season, conference)
 
 
+@app.get("/api/teams/{team}/recruiting")
+def api_team_recruiting(team: str, season: int, db: Session = Depends(get_db)) -> dict:
+    return {
+        "recruiting": q.team_recruiting(db, team, season),
+        "transfers": q.team_transfers(db, team, season),
+    }
+
+
 @app.get("/api/teams/{team}")
 def api_team(team: str, season: int, db: Session = Depends(get_db)) -> dict:
     summary = q.team_season_summary(db, team, season)
@@ -603,6 +611,8 @@ def page_team(
             "splits": q.team_splits(db, team, season),
             "drive_efficiency": q.drive_efficiency(db, team, season),
             "ats": q.team_ats_record(db, team, season),
+            "recruiting": q.team_recruiting(db, team, season),
+            "transfers": q.team_transfers(db, team, season),
             "figures": figures,
             "filters": {
                 "week_min": week_min, "week_max": week_max, "home_away": home_away or "",
