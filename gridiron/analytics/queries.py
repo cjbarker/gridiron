@@ -488,6 +488,68 @@ def explosiveness(
     return [dict(r._mapping) for r in session.execute(stmt)]
 
 
+def success_rate_allowed(
+    session: Session,
+    season: int | None = None,
+    flt: PlayFilter | None = None,
+    min_plays: int = 1,
+) -> list[dict[str, Any]]:
+    """Success rate a defense *yields* (grouped by `Play.defense`); lower is better."""
+    stmt = _run_pass_scope(
+        select(
+            Play.defense.label("team"),
+            func.count().label("plays"),
+            func.round(func.avg(_SUCCESS), 4).label("success_rate_allowed"),
+        )
+    ).group_by(Play.defense).having(func.count() >= min_plays)
+    stmt = _scope(stmt, season, None, flt)
+    return [dict(r._mapping) for r in session.execute(stmt)]
+
+
+def explosiveness_allowed(
+    session: Session,
+    season: int | None = None,
+    flt: PlayFilter | None = None,
+    min_plays: int = 1,
+) -> list[dict[str, Any]]:
+    """Share of 15+ yard plays a defense *allows* (grouped by `Play.defense`)."""
+    explosive = case((Play.yards_gained >= 15, 1), else_=0)
+    stmt = (
+        select(
+            Play.defense.label("team"),
+            func.count().label("plays"),
+            func.round(func.avg(explosive), 4).label("explosive_rate_allowed"),
+        )
+        .where(Play.yards_gained.isnot(None), Play.defense.isnot(None))
+        .group_by(Play.defense)
+        .having(func.count() >= min_plays)
+    )
+    stmt = _scope(stmt, season, None, flt)
+    return [dict(r._mapping) for r in session.execute(stmt)]
+
+
+def ppa_allowed(
+    session: Session,
+    season: int | None = None,
+    flt: PlayFilter | None = None,
+    min_plays: int = 1,
+) -> list[dict[str, Any]]:
+    """Average PPA/EPA a defense *allows* per play (grouped by `Play.defense`)."""
+    metric = func.coalesce(Play.epa, Play.ppa)
+    stmt = (
+        select(
+            Play.defense.label("team"),
+            func.count().label("plays"),
+            func.round(func.avg(metric), 4).label("avg_ppa_allowed"),
+        )
+        .where(metric.isnot(None), Play.defense.isnot(None))
+        .group_by(Play.defense)
+        .having(func.count() >= min_plays)
+    )
+    stmt = _scope(stmt, season, None, flt)
+    return [dict(r._mapping) for r in session.execute(stmt)]
+
+
 def ppa_by_down(
     session: Session,
     season: int | None = None,

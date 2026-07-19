@@ -203,8 +203,11 @@ Two engines share one interface:
   projects an actual score. Home-field is fit from the season's games. Cross-era sides
   are z-scored within their own season so the comparison is era-relative.
 - **ML logistic (opt-in):** a `scikit-learn` logistic-regression win model trained on
-  past games from the rating-diff features. Enable with `uv sync --extra ml`; without
-  it the page falls back to the ratings engine.
+  past games. Its features are the two teams' differences in the SRS ratings **plus
+  play-efficiency (offense _and_ defense-allowed success rate, explosiveness, and
+  EPA/PPA) and talent priors (recruiting-class points + net transfer-portal movement)**
+  — efficiency is week-scoped so the back-test stays leakage-safe. Enable with
+  `uv sync --extra ml`; without it the page falls back to the ratings engine.
 
 Every prediction shows its **component breakdown** (SRS, adjusted offense/defense,
 strength of schedule, form) and a **Monte-Carlo** distribution (win %, score band,

@@ -22,9 +22,13 @@ import random
 import statistics
 from dataclasses import asdict, dataclass, field
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from gridiron.analytics import queries as q
 from gridiron.analytics import ratings as rt
+from gridiron.analytics.filters import PlayFilter
+from gridiron.db.models import TeamRecruitingRank, Transfer
 
 # Defaults tuned to typical CFB scoring; the backtest reports the residual spread
 # that justifies them. Callers may override.
@@ -198,10 +202,81 @@ def ratings_prediction(
 # Feature vector for a matchup, home minus away (neutral flag last). Trained on the
 # same shape so cross-era diffs stay meaningful.
 _FEATURES = ("srs", "adj_off", "adj_def", "ppg", "papg", "form", "sos")
+# Play-efficiency (offense + defense-allowed) and talent priors added to the ML model.
+EXTRA_FEATURES = (
+    "off_success", "off_explosive", "off_ppa",
+    "def_success", "def_explosive", "def_ppa",
+    "recruiting_points", "transfer_net",
+)
 
 
-def _feature_vector(rh: rt.TeamRating, ravg: rt.TeamRating, neutral: bool) -> list[float]:
-    return [getattr(rh, f) - getattr(ravg, f) for f in _FEATURES] + [1.0 if neutral else 0.0]
+def _impute(values: dict[str, float], teams: set[str]) -> dict[str, float]:
+    """Fill missing teams with the mean of present values (0 if none present)."""
+    present = [values[t] for t in values if t in teams]
+    fill = statistics.fmean(present) if present else 0.0
+    return {t: values.get(t, fill) for t in teams}
+
+
+def season_extras(
+    session: Session, season: int, teams: set[str], *, through_week: int | None = None
+) -> dict[str, dict[str, float]]:
+    """Per-team efficiency + talent features for a season (imputed for every team).
+
+    Efficiency is week-scoped (``through_week``) so the backtest stays leakage-safe;
+    recruiting/transfers are preseason and use the whole season.
+    """
+    flt = PlayFilter(season=season, week_max=(through_week - 1 if through_week else None))
+
+    def _by(rows: list[dict], key: str) -> dict[str, float]:
+        return _impute({r["team"]: r[key] for r in rows}, teams)
+
+    off_s = _by(q.success_rate(session, flt=flt), "success_rate")
+    off_e = _by(q.explosiveness(session, flt=flt), "explosive_rate")
+    off_p = _by(q.ppa_leaders(session, min_plays=1, flt=flt), "avg_ppa")
+    def_s = _by(q.success_rate_allowed(session, flt=flt), "success_rate_allowed")
+    def_e = _by(q.explosiveness_allowed(session, flt=flt), "explosive_rate_allowed")
+    def_p = _by(q.ppa_allowed(session, flt=flt), "avg_ppa_allowed")
+
+    rec_rows = session.execute(
+        select(TeamRecruitingRank.team, TeamRecruitingRank.points).where(
+            TeamRecruitingRank.season == season
+        )
+    )
+    rec = _impute({t: (p or 0.0) for t, p in rec_rows}, teams)
+
+    tin = dict(
+        session.execute(
+            select(Transfer.destination, func.count()).where(Transfer.season == season)
+            .group_by(Transfer.destination)
+        ).all()
+    )
+    tout = dict(
+        session.execute(
+            select(Transfer.origin, func.count()).where(Transfer.season == season)
+            .group_by(Transfer.origin)
+        ).all()
+    )
+    net = _impute({t: float(tin.get(t, 0) - tout.get(t, 0)) for t in teams}, teams)
+
+    return {
+        t: {
+            "off_success": off_s[t], "off_explosive": off_e[t], "off_ppa": off_p[t],
+            "def_success": def_s[t], "def_explosive": def_e[t], "def_ppa": def_p[t],
+            "recruiting_points": rec[t], "transfer_net": net[t],
+        }
+        for t in teams
+    }
+
+
+def _matchup_features(
+    rh: rt.TeamRating, eh: dict[str, float], ra: rt.TeamRating, ea: dict[str, float], neutral: bool
+) -> list[float]:
+    """Home-minus-away diffs: ratings, then efficiency/talent extras, then neutral flag."""
+    return (
+        [getattr(rh, f) - getattr(ra, f) for f in _FEATURES]
+        + [eh[f] - ea[f] for f in EXTRA_FEATURES]
+        + [1.0 if neutral else 0.0]
+    )
 
 
 def _training_matrix(
@@ -212,11 +287,12 @@ def _training_matrix(
     y: list[int] = []
     for season in sorted(set(seasons)):
         sr = rt.team_ratings(session, season, through_week=through_week)
+        ex = season_extras(session, season, set(sr.teams), through_week=through_week)
         for g in rt.load_season_games(session, season, through_week=through_week):
             rh, ra = sr.get(g.home), sr.get(g.away)
             if rh is None or ra is None or g.home_points == g.away_points:
                 continue
-            x.append(_feature_vector(rh, ra, g.neutral))
+            x.append(_matchup_features(rh, ex[g.home], ra, ex[g.away], g.neutral))
             y.append(1 if g.home_points > g.away_points else 0)
     return x, y
 
@@ -239,32 +315,34 @@ def train_logistic(session: Session, seasons: list[int], *, through_week: int | 
 
 
 def logistic_prediction(
-    session: Session,
     ra: rt.TeamRating,
     sra: rt.SeasonRatings,
     rb: rt.TeamRating,
     srb: rt.SeasonRatings,
     a: str,
     b: str,
+    ea: dict[str, float],
+    eb: dict[str, float],
     *,
     neutral: bool,
     home: str | None,
     era_adjusted: bool,
-    model=None,
+    model,
 ) -> Prediction:
-    """Predict with the logistic model; falls back to the ratings total for the score.
+    """Predict with a trained logistic model; the ratings total supplies the score.
 
-    ``home`` orients the model's home/away features; the margin is recovered from the
-    predicted win probability so the Monte-Carlo path is shared with the ratings engine.
+    ``ea``/``eb`` are the two teams' efficiency/talent extras. ``home`` orients the
+    model's home/away features; the margin is recovered from the predicted win
+    probability so the Monte-Carlo path is shared with the ratings engine.
     """
-    scaler, clf = model or train_logistic(session, [sra.season, srb.season])
+    scaler, clf = model
     # The LR is oriented home-vs-away; map A/B onto that with the home flag.
     if home == "b":
-        feats = _feature_vector(rb, ra, neutral)
+        feats = _matchup_features(rb, eb, ra, ea, neutral)
         p_home = float(clf.predict_proba(scaler.transform([feats]))[0][1])
         win_prob_a = 1.0 - p_home
     else:  # A at home, or neutral (A treated as the nominal home row)
-        feats = _feature_vector(ra, rb, neutral)
+        feats = _matchup_features(ra, ea, rb, eb, neutral)
         win_prob_a = float(clf.predict_proba(scaler.transform([feats]))[0][1])
 
     margin = margin_from_win_prob(win_prob_a)
@@ -334,9 +412,12 @@ def predict_matchup(
     ml_fell_back = False
     if model == "logistic":
         try:
+            trained = train_logistic(session, [season_a, season_b])
+            ea = season_extras(session, season_a, set(sra.teams))[a]
+            eb = season_extras(session, season_b, set(srb.teams))[b]
             pred = logistic_prediction(
-                session, ra, sra, rb, srb, a, b,
-                neutral=neutral, home=home, era_adjusted=era_adjusted,
+                ra, sra, rb, srb, a, b, ea, eb,
+                neutral=neutral, home=home, era_adjusted=era_adjusted, model=trained,
             )
         except MLUnavailable:
             ml_fell_back = True

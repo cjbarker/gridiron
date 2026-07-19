@@ -23,6 +23,7 @@ from gridiron.analytics.predict import (
     MLUnavailable,
     logistic_prediction,
     ratings_prediction,
+    season_extras,
     train_logistic,
 )
 from gridiron.analytics.queries import _first_lines_by_game
@@ -81,9 +82,11 @@ def backtest_season(
         if sum(t.games for t in prior.teams.values()) < min_prior_games:
             continue
         lr = None
+        extras: dict = {}
         if used_model == "logistic":
             try:
                 lr = train_logistic(session, [season], through_week=w)
+                extras = season_extras(session, season, set(prior.teams), through_week=w)
             except MLUnavailable:
                 used_model = "ratings"  # no ML available → score ratings instead
 
@@ -96,7 +99,7 @@ def backtest_season(
             home = None if g.neutral else "a"  # side A = home team
             if used_model == "logistic" and lr is not None:
                 pred = logistic_prediction(
-                    session, rh, prior, ra, prior, g.home, g.away,
+                    rh, prior, ra, prior, g.home, g.away, extras[g.home], extras[g.away],
                     neutral=g.neutral, home=home, era_adjusted=False, model=lr,
                 )
             else:
