@@ -243,6 +243,11 @@ def api_ats_record(team: str, season: int, db: Session = Depends(get_db)) -> dic
     return q.team_ats_record(db, team, season)
 
 
+@app.get("/api/teams/{team}/trends")
+def api_team_trends(team: str, db: Session = Depends(get_db)) -> list[dict]:
+    return q.team_season_history(db, team)
+
+
 @app.get("/api/teams/{team}")
 def api_team(team: str, season: int, db: Session = Depends(get_db)) -> dict:
     summary = q.team_season_summary(db, team, season)
@@ -513,6 +518,9 @@ def page_team(
         "efficiency": ch.success_explosive_fig(db, season, team, flt=flt),
         "drive_outcomes": ch.drive_outcomes_fig(db, season, team),
     }
+    history = q.team_season_history(db, team)
+    if len(history) > 1:
+        figures["trends"] = ch.team_trends_fig(db, team)
     return templates.TemplateResponse(
         request=request,
         name="team.html",

@@ -259,3 +259,27 @@ def drive_outcomes_fig(session: Session, season: int, team: str | None = None) -
     )
     fig.update_yaxes(title_text="Drives")
     return fig_to_json(_theme(fig, "Drive outcomes"))
+
+
+def team_trends_fig(session: Session, team: str) -> str:
+    """Season-over-season line of a team's scoring offense and defense."""
+    hist = q.team_season_history(session, team)
+    if not hist:
+        return _empty(f"{team} season trends")
+    seasons = [h["season"] for h in hist]
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=seasons, y=[h["ppg"] for h in hist], mode="lines+markers",
+            name="Points / game", line=dict(color=_ACCENT, width=3),
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=seasons, y=[h["papg"] for h in hist], mode="lines+markers",
+            name="Allowed / game", line=dict(color=_SEQ[3], width=3),
+        )
+    )
+    fig.update_xaxes(title_text="Season", dtick=1)
+    fig.update_yaxes(title_text="Points / game")
+    return fig_to_json(_theme(fig, f"{team} — season-over-season"))

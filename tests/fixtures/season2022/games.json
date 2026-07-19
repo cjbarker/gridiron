@@ -1,0 +1,19 @@
+[
+  {
+    "id": 401404100,
+    "season": 2022,
+    "week": 1,
+    "seasonType": "regular",
+    "startDate": "2022-09-03T18:00:00.000Z",
+    "completed": true,
+    "neutralSite": true,
+    "homeId": 61,
+    "homeTeam": "Georgia",
+    "homeConference": "SEC",
+    "homePoints": 49,
+    "awayId": 2390,
+    "awayTeam": "Oregon",
+    "awayConference": "Pac-12",
+    "awayPoints": 3
+  }
+]

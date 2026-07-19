@@ -95,7 +95,12 @@ enriches those same rows.
   **splits**, scoring/efficiency charts, and a **filter bar** (week range, home/away,
   conference, vs-ranked, down, distance) that re-scopes the charts
 - `/players?q=…` · `/players/{id}` — player profile, season totals, game log
+- `/players/compare?a=…&b=…` — two players' stat lines side by side
 - `/compare?a=Georgia&b=Alabama&season=2023` — two teams side by side + head-to-head
+
+Team pages also carry **drive-level** stats (scoring %, points/yards/plays per
+drive + a drive-outcome chart), an **against-the-spread / over-under** record, and a
+**season-over-season** trend chart. Game pages show the **betting lines**.
 
 Charts are [Plotly](https://plotly.com/python/); the JS bundle is served from the
 installed `plotly` package at `/vendor/plotly.min.js`, so charts work offline with
@@ -142,5 +147,7 @@ pytest          # runs fully offline against the JSON fixtures
 - **M3 (done):** bulk parquet backfill to 2002 with EPA/WP; season splits &
   composable filters; two-team matchup/comparison views; and a `gridiron-refresh`
   command (+ cron) for the current season.
-- **Next ideas:** player-vs-player comparison, drive-level analytics, betting-line
-  ingestion, and a season-over-season trends view.
+- **M4 (done):** player-vs-player comparison, drive-level analytics, betting-line
+  ingestion (lines + ATS/OU records), and season-over-season trends.
+- **Next ideas:** recruiting/transfer data, win-probability charts, conference
+  standings, and a public read-only deploy.

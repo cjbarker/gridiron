@@ -741,3 +741,20 @@ def team_ats_record(session: Session, team: str, season: int) -> dict[str, Any]:
         "ats": _rec(covers, losses, pushes),
         "over_under": _rec(overs, unders, ou_pushes),
     }
+
+
+# --- Season-over-season trends --------------------------------------------
+
+def team_season_history(session: Session, team: str) -> list[dict[str, Any]]:
+    """A team's per-season summary across every season it appears in."""
+    seasons = (
+        session.execute(
+            select(Game.season)
+            .where(or_(Game.home_team == team, Game.away_team == team))
+            .distinct()
+            .order_by(Game.season)
+        )
+        .scalars()
+        .all()
+    )
+    return [team_season_summary(session, team, s) for s in seasons]

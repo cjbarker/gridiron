@@ -71,6 +71,13 @@
   </div>
 </div>
 
+{% if 'trends' in figures %}
+<div class="card">
+  <h3>Season-over-season</h3>
+  <div class="chart" id="chart-trends"></div>
+</div>
+{% endif %}
+
 <div class="card">
   <h3>Analytics</h3>
   <div class="chart-grid">
