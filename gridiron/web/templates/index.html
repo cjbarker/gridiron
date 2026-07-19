@@ -8,7 +8,16 @@
       <option value="{{ s }}" {% if s == season %}selected{% endif %}>{{ s }}</option>
     {% endfor %}
   </select>
-  <noscript><button type="submit">Go</button></noscript>
+  <label for="conference" class="muted">Conference</label>
+  <select id="conference" name="conference" onchange="this.form.submit()">
+    <option value="">All</option>
+    {% for c in conferences %}
+      <option value="{{ c }}" {% if c == conference %}selected{% endif %}>{{ c }}</option>
+    {% endfor %}
+  </select>
+  <label for="week" class="muted">Week</label>
+  <input type="number" id="week" name="week" min="1" max="20" value="{{ week if week is not none else '' }}" style="width:70px">
+  <button type="submit">Filter</button>
 </form>
 
 <div class="card">

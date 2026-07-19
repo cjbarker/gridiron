@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Compare{% if a and b %} — {{ a }} vs {{ b }}{% endif %}{% endblock %}
+{% block content %}
+<form method="get" action="/compare" class="card">
+  <input type="hidden" name="season" value="{{ season }}">
+  <label class="muted">Team A</label>
+  <select name="a">
+    <option value="">—</option>
+    {% for t in teams %}<option value="{{ t.team }}" {% if t.team == a %}selected{% endif %}>{{ t.team }}</option>{% endfor %}
+  </select>
+  <label class="muted">Team B</label>
+  <select name="b">
+    <option value="">—</option>
+    {% for t in teams %}<option value="{{ t.team }}" {% if t.team == b %}selected{% endif %}>{{ t.team }}</option>{% endfor %}
+  </select>
+  <button type="submit">Compare</button>
+  <span class="muted">{{ season }}</span>
+</form>
+
+{% if comparison %}
+{% set A = comparison.a %}{% set B = comparison.b %}
+<div class="card">
+  <h2>
+    <a href="/teams/{{ a }}?season={{ season }}">{{ a }}</a>
+    <span class="muted">vs</span>
+    <a href="/teams/{{ b }}?season={{ season }}">{{ b }}</a>
+  </h2>
+  <table>
+    <thead><tr><th>Metric</th><th>{{ a }}</th><th>{{ b }}</th></tr></thead>
+    <tbody>
+      <tr><td>Record</td><td>{{ A.summary.record }}</td><td>{{ B.summary.record }}</td></tr>
+      <tr><td>Points / game</td><td>{{ A.summary.ppg if A.summary.ppg is not none else '—' }}</td><td>{{ B.summary.ppg if B.summary.ppg is not none else '—' }}</td></tr>
+      <tr><td>Allowed / game</td><td>{{ A.summary.papg if A.summary.papg is not none else '—' }}</td><td>{{ B.summary.papg if B.summary.papg is not none else '—' }}</td></tr>
+      <tr><td>Success rate</td><td>{{ (A.success_rate * 100)|round(1) if A.success_rate is not none else '—' }}%</td><td>{{ (B.success_rate * 100)|round(1) if B.success_rate is not none else '—' }}%</td></tr>
+      <tr><td>Explosive rate</td><td>{{ (A.explosive_rate * 100)|round(1) if A.explosive_rate is not none else '—' }}%</td><td>{{ (B.explosive_rate * 100)|round(1) if B.explosive_rate is not none else '—' }}%</td></tr>
+      <tr><td>Avg PPA/EPA</td><td>{{ A.avg_ppa if A.avg_ppa is not none else '—' }}</td><td>{{ B.avg_ppa if B.avg_ppa is not none else '—' }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="chart" id="chart-compare"></div>
+</div>
+
+{% if comparison.head_to_head %}
+<div class="card">
+  <h3>Head-to-head</h3>
+  <table>
+    <thead><tr><th>Wk</th><th>Matchup</th><th>Score</th></tr></thead>
+    <tbody>
+      {% for g in comparison.head_to_head %}
+      <tr>
+        <td class="muted">{{ g.week }}</td>
+        <td>{{ g.away_team }} @ {{ g.home_team }}</td>
+        <td class="score"><a href="/games/{{ g.game_id }}">{{ g.away_points }}–{{ g.home_points }}</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card"><p class="muted">No head-to-head game this season.</p></div>
+{% endif %}
+{% elif a or b %}
+<div class="card"><p class="muted">Pick two teams to compare.</p></div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if figure %}
+<script src="/vendor/plotly.min.js"></script>
+<script>
+  const fig = JSON.parse({{ figure|tojson }});
+  Plotly.newPlot(document.getElementById('chart-compare'), fig.data, fig.layout, {displayModeBar: false, responsive: true});
+</script>
+{% endif %}
+{% endblock %}

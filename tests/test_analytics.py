@@ -110,3 +110,13 @@ def test_explosiveness_and_ppa_by_down(db_env, fixture_source):
     assert 0.0 <= expl["Georgia"]["explosive_rate"] <= 1.0
     assert set(by_down.keys()) <= {1, 2, 3, 4}
     assert by_down[1]["plays"] >= 1
+
+
+def test_team_splits(db_env, fixture_source):
+    ingest_season(fixture_source, 2023)
+    with session_scope() as s:
+        splits = q.team_splits(s, "Georgia", 2023)
+    assert splits["home"]["record"] == "2-0"  # both games at home
+    assert splits["away"]["games"] == 0
+    q1 = next(x for x in splits["by_quarter"] if x["period"] == 1)
+    assert q1["points"] == 14  # Georgia's Q1 scoring across both games

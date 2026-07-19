@@ -90,10 +90,12 @@ enriches those same rows.
 
 ## Pages
 
-- `/` — season game browser · `/games/{id}` — box score & play-by-play
-- `/teams` · `/teams/{team}?season=2023` — team dossier: record, scoring trend,
-  field-position scoring, play-type mix, PPA-by-down and efficiency charts, game log
+- `/` — season game browser (filter by week & conference) · `/games/{id}` — box score & play-by-play
+- `/teams` · `/teams/{team}?season=2023` — team dossier: record, home/away & by-quarter
+  **splits**, scoring/efficiency charts, and a **filter bar** (week range, home/away,
+  conference, vs-ranked, down, distance) that re-scopes the charts
 - `/players?q=…` · `/players/{id}` — player profile, season totals, game log
+- `/compare?a=Georgia&b=Alabama&season=2023` — two teams side by side + head-to-head
 
 Charts are [Plotly](https://plotly.com/python/); the JS bundle is served from the
 installed `plotly` package at `/vendor/plotly.min.js`, so charts work offline with
@@ -105,9 +107,26 @@ no CDN or build step.
 - `GET /api/games/{id}` — game, drives, play-by-play, box score
 - `GET /api/teams/{team}?season=2023` — summary, game log, rankings history
 - `GET /api/players?q=…&season=2023` · `GET /api/players/{id}` — profile, season stats, game log
+- `GET /api/compare?a=Georgia&b=Alabama&season=2023` — two-team comparison + head-to-head
 - `GET /api/analytics/scoring-by-field-position?season=2023`
 - `GET /api/analytics/scoring-types` · `/fg-success` · `/play-type-mix` · `/ppa-leaders` · `/team-scoring`
 - `GET /api/analytics/success-rate` · `/explosiveness` · `/ppa-by-down` (params: `season`, optional `team`)
+
+## Keeping the current season fresh
+
+Ingestion is idempotent, so re-running it just upserts. `gridiron-refresh`
+(re-)ingests the in-progress season (Aug–Jan → that year):
+
+```bash
+gridiron-refresh                 # current season via CFBD API
+gridiron-refresh --plays-source parquet   # or pull plays from the parquet
+```
+
+Schedule it with cron — e.g. every 6 hours during the season:
+
+```cron
+0 */6 * * *  cd /path/to/gridiron && /path/to/.venv/bin/gridiron-refresh >> refresh.log 2>&1
+```
 
 ## Tests
 
@@ -120,5 +139,8 @@ pytest          # runs fully offline against the JSON fixtures
 - **M1 (done):** ingestion pipeline + schema + analytics core + offline tests.
 - **M2 (done):** roster ingestion, team & player pages, Plotly charts, and advanced
   metrics (success rate, explosiveness, PPA/EPA by down).
-- **M3 (in progress):** bulk parquet backfill to 2002 with EPA/WP **(done)**;
-  next — season splits & filters, current-season auto-refresh, matchup/comparison views.
+- **M3 (done):** bulk parquet backfill to 2002 with EPA/WP; season splits &
+  composable filters; two-team matchup/comparison views; and a `gridiron-refresh`
+  command (+ cron) for the current season.
+- **Next ideas:** player-vs-player comparison, drive-level analytics, betting-line
+  ingestion, and a season-over-season trends view.

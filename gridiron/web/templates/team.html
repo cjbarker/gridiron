@@ -17,6 +17,40 @@
     {% for r in rankings %}<span class="pill">{{ r.poll }} wk{{ r.week }}: #{{ r.rank }}</span> {% endfor %}
   </p>
   {% endif %}
+  <p style="margin-top:12px;"><a href="/compare?a={{ team }}&season={{ season }}">Compare {{ team }} →</a></p>
+</div>
+
+<div class="card">
+  <h3>Splits</h3>
+  <div class="stat-grid">
+    <div class="stat"><div class="n">{{ splits.home.record }}</div><div class="l">Home ({{ splits.home.ppg if splits.home.ppg is not none else '—' }} ppg)</div></div>
+    <div class="stat"><div class="n">{{ splits.away.record }}</div><div class="l">Away ({{ splits.away.ppg if splits.away.ppg is not none else '—' }} ppg)</div></div>
+    {% for qtr in splits.by_quarter %}
+      <div class="stat"><div class="n">{{ qtr.points }}</div><div class="l">Q{{ qtr.period }} points</div></div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <h3>Filters</h3>
+  <form method="get" action="/teams/{{ team }}">
+    <input type="hidden" name="season" value="{{ season }}">
+    <label class="muted">Wk</label>
+    <input type="number" name="week_min" min="1" max="20" placeholder="from" value="{{ filters.week_min if filters.week_min is not none else '' }}" style="width:70px">
+    <input type="number" name="week_max" min="1" max="20" placeholder="to" value="{{ filters.week_max if filters.week_max is not none else '' }}" style="width:70px">
+    <select name="home_away">
+      <option value="">Home/Away</option>
+      <option value="home" {% if filters.home_away == 'home' %}selected{% endif %}>Home</option>
+      <option value="away" {% if filters.home_away == 'away' %}selected{% endif %}>Away</option>
+    </select>
+    <input type="text" name="conference" placeholder="Conference" value="{{ filters.conference }}" style="width:120px">
+    <label class="muted"><input type="checkbox" name="vs_ranked" value="true" {% if filters.vs_ranked %}checked{% endif %} style="width:auto"> vs ranked</label>
+    <input type="number" name="down" min="1" max="4" placeholder="down" value="{{ filters.down }}" style="width:70px">
+    <input type="number" name="distance_min" placeholder="dist ≥" value="{{ filters.distance_min if filters.distance_min is not none else '' }}" style="width:70px">
+    <button type="submit">Apply</button>
+    {% if filters_active %}<a href="/teams/{{ team }}?season={{ season }}" class="muted">clear</a>{% endif %}
+  </form>
+  {% if filters_active %}<p class="muted">Charts below reflect the active filters.</p>{% endif %}
 </div>
 
 <div class="card">

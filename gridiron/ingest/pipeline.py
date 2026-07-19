@@ -9,6 +9,7 @@ duplicates.
 
 from __future__ import annotations
 
+import datetime as _dt
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -73,6 +74,25 @@ def ingest_season(
             _ingest_box_scores(source, year, season_types, session, report, game_ids)
         _ingest_rankings(source, year, session, report)
     return report
+
+
+def current_season(today: _dt.date | None = None) -> int:
+    """The season a given date belongs to.
+
+    A college football season spans Aug–Jan, so Aug–Dec map to that calendar
+    year and Jan–Jul map to the prior year (bowls/playoff of the season before).
+    """
+    today = today or _dt.date.today()
+    return today.year if today.month >= 8 else today.year - 1
+
+
+def refresh_current_season(source: DataSource, *, today: _dt.date | None = None, **kwargs) -> IngestReport:
+    """Idempotently re-ingest the in-progress season (games/plays/rankings, etc.).
+
+    Thin wrapper over :func:`ingest_season` for the current season; safe to run on
+    a schedule (cron) since ingestion upserts.
+    """
+    return ingest_season(source, current_season(today), **kwargs)
 
 
 def _ingest_reference(source: DataSource, year: int, session: Session, report: IngestReport) -> None:

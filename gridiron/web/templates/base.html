@@ -20,7 +20,10 @@
     .score { font-variant-numeric: tabular-nums; font-weight:700; }
     .muted { color:var(--muted); }
     .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#1d2a42; font-size:12px; }
-    select, input[type=search] { background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:6px 10px; }
+    select, input { background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:6px 10px; }
+    button { background:var(--accent); color:#06121f; border:none; border-radius:8px; padding:7px 14px; font-weight:600; cursor:pointer; }
+    form.card label { margin-right:6px; }
+    form.card > * { margin-right:8px; }
     nav a { margin-right:14px; color:var(--muted); }
     nav a:hover { color:var(--accent); }
     .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:12px; }
@@ -39,6 +42,7 @@
       <a href="/">Games</a>
       <a href="/teams">Teams</a>
       <a href="/players">Players</a>
+      <a href="/compare">Compare</a>
     </nav>
     <span class="muted">college football stats &amp; analysis</span>
   </header>

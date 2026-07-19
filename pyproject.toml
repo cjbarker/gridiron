@@ -32,6 +32,7 @@ dev = ["pytest>=8.0", "ruff>=0.4"]
 
 [project.scripts]
 gridiron-ingest = "gridiron.ingest.cli:main"
+gridiron-refresh = "gridiron.ingest.cli:refresh_main"
 gridiron-initdb = "gridiron.db.init_db:main"
 
 [build-system]

@@ -34,6 +34,7 @@ from sqlalchemy.orm import Session
 
 from gridiron.analytics import charts as ch
 from gridiron.analytics import queries as q
+from gridiron.analytics.filters import PlayFilter
 from gridiron.db.models import (
     Drive,
     Game,
@@ -90,15 +91,24 @@ def api_games(
     season: int = Query(...),
     week: int | None = None,
     team: str | None = None,
+    conference: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[dict]:
+    stmt = _games_query(season, week, team, conference)
+    return [_game_summary(g) for g in db.execute(stmt).scalars().all()]
+
+
+def _games_query(season, week=None, team=None, conference=None):
     stmt = select(Game).where(Game.season == season)
     if week is not None:
         stmt = stmt.where(Game.week == week)
     if team is not None:
         stmt = stmt.where((Game.home_team == team) | (Game.away_team == team))
-    stmt = stmt.order_by(Game.start_date, Game.id)
-    return [_game_summary(g) for g in db.execute(stmt).scalars().all()]
+    if conference is not None:
+        stmt = stmt.where(
+            (Game.home_conference == conference) | (Game.away_conference == conference)
+        )
+    return stmt.order_by(Game.start_date, Game.id)
 
 
 @app.get("/api/games/{game_id}")
@@ -246,29 +256,80 @@ def api_player(
     }
 
 
+@app.get("/api/compare")
+def api_compare(a: str, b: str, season: int, db: Session = Depends(get_db)) -> dict:
+    return q.team_compare(db, a, b, season)
+
+
 # --- HTML pages -----------------------------------------------------------
 
+
+def _play_filter(
+    season: int | None,
+    team: str | None = None,
+    *,
+    week_min: int | None = None,
+    week_max: int | None = None,
+    home_away: str | None = None,
+    conference: str | None = None,
+    vs_ranked: bool = False,
+    down: int | None = None,
+    distance_min: int | None = None,
+    distance_max: int | None = None,
+) -> PlayFilter:
+    return PlayFilter(
+        season=season,
+        team=team,
+        week_min=week_min,
+        week_max=week_max,
+        home_away=home_away or None,
+        conference=conference or None,
+        vs_ranked=vs_ranked,
+        down=down,
+        distance_min=distance_min,
+        distance_max=distance_max,
+    )
+
 @app.get("/", response_class=HTMLResponse)
-def page_index(request: Request, season: int | None = None, db: Session = Depends(get_db)) -> HTMLResponse:
+def page_index(
+    request: Request,
+    season: int | None = None,
+    week: int | None = None,
+    conference: str | None = None,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
     seasons = (
         db.execute(select(Game.season).distinct().order_by(Game.season.desc())).scalars().all()
     )
     if season is None and seasons:
         season = seasons[0]
     games = []
+    conferences: list[str] = []
     if season is not None:
         games = [
             _game_summary(g)
-            for g in db.execute(
-                select(Game).where(Game.season == season).order_by(Game.start_date, Game.id)
-            )
-            .scalars()
-            .all()
+            for g in db.execute(_games_query(season, week, None, conference)).scalars().all()
         ]
+        conferences = sorted(
+            {
+                c
+                for c in db.execute(
+                    select(Game.home_conference).where(Game.season == season).distinct()
+                ).scalars()
+                if c
+            }
+        )
     return templates.TemplateResponse(
         request=request,
         name="index.html",
-        context={"seasons": seasons, "season": season, "games": games},
+        context={
+            "seasons": seasons,
+            "season": season,
+            "games": games,
+            "conferences": conferences,
+            "conference": conference or "",
+            "week": week,
+        },
     )
 
 
@@ -316,20 +377,66 @@ def page_teams(request: Request, season: int | None = None, db: Session = Depend
     )
 
 
+@app.get("/compare", response_class=HTMLResponse)
+def page_compare(
+    request: Request,
+    a: str | None = None,
+    b: str | None = None,
+    season: int | None = None,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    season = _current_season(db, season)
+    teams = q.list_teams_with_data(db, season) if season is not None else []
+    comparison = None
+    figure = None
+    if a and b and season is not None:
+        comparison = q.team_compare(db, a, b, season)
+        figure = ch.compare_fig(a, b, comparison["a"], comparison["b"])
+    return templates.TemplateResponse(
+        request=request,
+        name="compare.html",
+        context={
+            "season": season,
+            "teams": teams,
+            "a": a,
+            "b": b,
+            "comparison": comparison,
+            "figure": figure,
+        },
+    )
+
+
 @app.get("/teams/{team}", response_class=HTMLResponse)
 def page_team(
-    request: Request, team: str, season: int | None = None, db: Session = Depends(get_db)
+    request: Request,
+    team: str,
+    season: int | None = None,
+    week_min: int | None = None,
+    week_max: int | None = None,
+    home_away: str | None = None,
+    conference: str | None = None,
+    vs_ranked: bool = False,
+    down: int | None = None,
+    distance_min: int | None = None,
+    distance_max: int | None = None,
+    db: Session = Depends(get_db),
 ) -> HTMLResponse:
     season = _current_season(db, season)
     game_log = q.team_game_log(db, team, season) if season is not None else []
     if not game_log:
         raise HTTPException(status_code=404, detail="team/season not found")
+    flt = _play_filter(
+        season, team, week_min=week_min, week_max=week_max, home_away=home_away,
+        conference=conference, vs_ranked=vs_ranked, down=down,
+        distance_min=distance_min, distance_max=distance_max,
+    )
+    extras_set = any([week_min, week_max, home_away, conference, vs_ranked, down, distance_min, distance_max])
     figures = {
         "trend": ch.team_points_trend_fig(db, team, season),
-        "field_position": ch.scoring_field_position_fig(db, season, team),
-        "play_mix": ch.play_type_mix_fig(db, season, team),
-        "ppa_down": ch.ppa_by_down_fig(db, season, team),
-        "efficiency": ch.success_explosive_fig(db, season, team),
+        "field_position": ch.scoring_field_position_fig(db, flt=flt),
+        "play_mix": ch.play_type_mix_fig(db, flt=flt),
+        "ppa_down": ch.ppa_by_down_fig(db, flt=flt),
+        "efficiency": ch.success_explosive_fig(db, season, team, flt=flt),
     }
     return templates.TemplateResponse(
         request=request,
@@ -340,7 +447,14 @@ def page_team(
             "summary": q.team_season_summary(db, team, season),
             "game_log": game_log,
             "rankings": q.team_rankings_history(db, team, season),
+            "splits": q.team_splits(db, team, season),
             "figures": figures,
+            "filters": {
+                "week_min": week_min, "week_max": week_max, "home_away": home_away or "",
+                "conference": conference or "", "vs_ranked": vs_ranked, "down": down or "",
+                "distance_min": distance_min, "distance_max": distance_max,
+            },
+            "filters_active": extras_set,
         },
     )
 

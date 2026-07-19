@@ -16,6 +16,7 @@ import plotly.io as pio
 from sqlalchemy.orm import Session
 
 from gridiron.analytics import queries as q
+from gridiron.analytics.filters import PlayFilter
 
 # Site-matching palette (see web/templates/base.html).
 _ACCENT = "#4ea1ff"
@@ -58,9 +59,12 @@ def _empty(title: str, message: str = "No data") -> str:
 # --- Season / team scoring charts ----------------------------------------
 
 def scoring_field_position_fig(
-    session: Session, season: int | None = None, team: str | None = None
+    session: Session,
+    season: int | None = None,
+    team: str | None = None,
+    flt: PlayFilter | None = None,
 ) -> str:
-    rows = q.scoring_by_field_position(session, season, team)
+    rows = q.scoring_by_field_position(session, season, team, flt=flt)
     if not rows:
         return _empty("Points by field position")
     fig = go.Figure(
@@ -113,9 +117,13 @@ def fg_success_fig(
 
 
 def play_type_mix_fig(
-    session: Session, season: int | None = None, team: str | None = None, limit: int = 12
+    session: Session,
+    season: int | None = None,
+    team: str | None = None,
+    limit: int = 12,
+    flt: PlayFilter | None = None,
 ) -> str:
-    rows = q.play_type_mix(session, season, team, limit=limit)
+    rows = q.play_type_mix(session, season, team, limit=limit, flt=flt)
     if not rows:
         return _empty("Play-type mix")
     rows = sorted(rows, key=lambda r: r["plays"])
@@ -165,9 +173,12 @@ def team_points_trend_fig(session: Session, team: str, season: int) -> str:
 
 
 def ppa_by_down_fig(
-    session: Session, season: int | None = None, team: str | None = None
+    session: Session,
+    season: int | None = None,
+    team: str | None = None,
+    flt: PlayFilter | None = None,
 ) -> str:
-    rows = q.ppa_by_down(session, season, team)
+    rows = q.ppa_by_down(session, season, team, flt=flt)
     if not rows:
         return _empty("PPA by down")
     fig = go.Figure(
@@ -182,9 +193,11 @@ def ppa_by_down_fig(
     return fig_to_json(_theme(fig, "Efficiency (PPA/EPA) by down"))
 
 
-def success_explosive_fig(session: Session, season: int, team: str) -> str:
-    sr = q.success_rate(session, season, team)
-    ex = q.explosiveness(session, season, team)
+def success_explosive_fig(
+    session: Session, season: int, team: str, flt: PlayFilter | None = None
+) -> str:
+    sr = q.success_rate(session, season, team, flt=flt)
+    ex = q.explosiveness(session, season, team, flt=flt)
     success = sr[0]["success_rate"] if sr else 0
     explosive = ex[0]["explosive_rate"] if ex else 0
     fig = go.Figure(
@@ -197,3 +210,21 @@ def success_explosive_fig(session: Session, season: int, team: str) -> str:
     )
     fig.update_yaxes(title_text="%", range=[0, 100])
     return fig_to_json(_theme(fig, "Offensive efficiency"))
+
+
+def compare_fig(a_label: str, b_label: str, a: dict, b: dict) -> str:
+    """Grouped bar comparing two teams' headline metrics (from `team_compare`)."""
+    cats = ["Points / game", "Success %", "Explosive %"]
+
+    def vals(side: dict) -> list[float]:
+        return [
+            side["summary"].get("ppg") or 0,
+            round((side.get("success_rate") or 0) * 100, 1),
+            round((side.get("explosive_rate") or 0) * 100, 1),
+        ]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name=a_label, x=cats, y=vals(a), marker_color=_ACCENT))
+    fig.add_trace(go.Bar(name=b_label, x=cats, y=vals(b), marker_color=_SEQ[2]))
+    fig.update_layout(barmode="group")
+    return fig_to_json(_theme(fig, f"{a_label} vs {b_label}"))

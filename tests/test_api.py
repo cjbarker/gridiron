@@ -34,6 +34,12 @@ def test_games_endpoint(client):
     wk1 = client.get("/api/games", params={"season": 2023, "week": 1}).json()
     assert len(wk1) == 1 and wk1[0]["id"] == 401520281
 
+    # Conference filter.
+    mac = client.get("/api/games", params={"season": 2023, "conference": "Mid-American"}).json()
+    assert len(mac) == 1 and mac[0]["away_team"] == "Ball State"
+    sec = client.get("/api/games", params={"season": 2023, "conference": "SEC"}).json()
+    assert len(sec) == 2
+
 
 def test_game_detail_endpoint(client):
     resp = client.get("/api/games/401520281")
@@ -104,6 +110,11 @@ def test_html_pages(client):
     team_page = client.get("/teams/Georgia", params={"season": 2023})
     assert team_page.status_code == 200
     assert "chart-trend" in team_page.text  # chart containers present
+    # Filtered team page still renders (charts re-scoped by the filter).
+    filtered = client.get(
+        "/teams/Georgia", params={"season": 2023, "home_away": "home", "week_max": 1}
+    )
+    assert filtered.status_code == 200 and "Splits" in filtered.text
 
     assert client.get("/players", params={"q": "beck"}).status_code == 200
     player_page = client.get("/players/4429795", params={"season": 2023})

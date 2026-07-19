@@ -29,7 +29,7 @@ import argparse
 import sys
 
 from gridiron.db.init_db import create_all
-from gridiron.ingest.pipeline import ingest_season
+from gridiron.ingest.pipeline import current_season, ingest_season
 from gridiron.ingest.sources import (
     CFBDSource,
     DataSource,
@@ -49,11 +49,13 @@ def _build_source(args: argparse.Namespace) -> DataSource:
 
 
 def _years(args: argparse.Namespace) -> list[int]:
+    if getattr(args, "refresh", False):
+        return [current_season()]
     if args.year is not None:
         return [args.year]
     if args.start is not None and args.end is not None:
         return list(range(args.start, args.end + 1))
-    raise SystemExit("Specify --year, or both --start and --end.")
+    raise SystemExit("Specify --year, --start/--end, or --refresh.")
 
 
 def _inspect_parquet(years: list[int], base_url: str | None) -> int:
@@ -100,6 +102,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--init-db", action="store_true", help="Create tables before ingesting."
     )
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Idempotently (re-)ingest the current season (for cron). Overrides --year.",
+    )
     args = parser.parse_args(argv)
 
     if args.inspect_parquet:
@@ -126,6 +133,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(report)
     return 0
+
+
+def refresh_main(argv: list[str] | None = None) -> int:
+    """Entry point for the ``gridiron-refresh`` console script (implies --refresh)."""
+    return main(["--refresh", *(argv if argv is not None else sys.argv[1:])])
 
 
 if __name__ == "__main__":

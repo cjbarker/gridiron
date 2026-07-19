@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy import Integer, and_, case, func, or_, select
 from sqlalchemy.orm import Session
 
+from gridiron.analytics.filters import PlayFilter, apply_play_filter
 from gridiron.db.models import Game, Play, Player, PlayerGameStat, Ranking
 
 # Field-position buckets by yards-to-goal (distance to opponent end zone).
@@ -27,24 +28,22 @@ _FP_BUCKETS = [
 ]
 
 
-def _season_filter(stmt, season: int | None):
-    # plays.season is denormalized at ingest, so filter directly (indexed) instead
-    # of joining games — far cheaper across many seasons of play-by-play.
-    if season is not None:
-        stmt = stmt.where(Play.season == season)
-    return stmt
+def _scope(stmt, season: int | None, team: str | None, flt: PlayFilter | None):
+    """Scope a Play query by an explicit :class:`PlayFilter`, or by season/team.
 
-
-def _play_scope(stmt, season: int | None, team: str | None):
-    """Apply season + optional offense-team filters to a Play query."""
-    stmt = _season_filter(stmt, season)
-    if team is not None:
-        stmt = stmt.where(Play.offense == team)
-    return stmt
+    When ``flt`` is given it fully specifies the scope; otherwise a simple
+    ``PlayFilter(season, team)`` is applied — so existing callers are unchanged.
+    """
+    if flt is None:
+        flt = PlayFilter(season=season, team=team)
+    return apply_play_filter(stmt, flt)
 
 
 def scoring_by_field_position(
-    session: Session, season: int | None = None, team: str | None = None
+    session: Session,
+    season: int | None = None,
+    team: str | None = None,
+    flt: PlayFilter | None = None,
 ) -> list[dict[str, Any]]:
     """Count and total points of scoring plays, bucketed by field position.
 
@@ -68,7 +67,7 @@ def scoring_by_field_position(
         .where(Play.scoring.is_(True))
         .group_by(bucket)
     )
-    stmt = _play_scope(stmt, season, team)
+    stmt = _scope(stmt, season, team, flt)
     order = {label: i for i, (_, _, label) in enumerate(_FP_BUCKETS)}
     rows = [dict(r._mapping) for r in session.execute(stmt)]
     rows.sort(key=lambda r: order.get(r["bucket"], 99))
@@ -76,7 +75,10 @@ def scoring_by_field_position(
 
 
 def scoring_type_breakdown(
-    session: Session, season: int | None = None, team: str | None = None
+    session: Session,
+    season: int | None = None,
+    team: str | None = None,
+    flt: PlayFilter | None = None,
 ) -> list[dict[str, Any]]:
     """Breakdown of scoring plays by point value (6=TD, 3=FG, 2=safety/2pt, 1=PAT)."""
     label = case(
@@ -97,12 +99,15 @@ def scoring_type_breakdown(
         .group_by(label)
         .order_by(func.sum(Play.points_scored).desc())
     )
-    stmt = _play_scope(stmt, season, team)
+    stmt = _scope(stmt, season, team, flt)
     return [dict(r._mapping) for r in session.execute(stmt)]
 
 
 def field_goal_success_by_distance(
-    session: Session, season: int | None = None, team: str | None = None
+    session: Session,
+    season: int | None = None,
+    team: str | None = None,
+    flt: PlayFilter | None = None,
 ) -> list[dict[str, Any]]:
     """Field-goal make rate bucketed by distance (yards-to-goal)."""
     made = func.sum(case((Play.play_type == "Field Goal Good", 1), else_=0)).label("made")
@@ -120,7 +125,7 @@ def field_goal_success_by_distance(
         .where(Play.play_type.in_(["Field Goal Good", "Field Goal Missed"]))
         .group_by(bucket)
     )
-    stmt = _play_scope(stmt, season, team)
+    stmt = _scope(stmt, season, team, flt)
     order = {label: i for i, (_, _, label) in enumerate(_FP_BUCKETS)}
     out = []
     for r in session.execute(stmt):
@@ -140,7 +145,11 @@ def field_goal_success_by_distance(
 
 
 def play_type_mix(
-    session: Session, season: int | None = None, team: str | None = None, limit: int = 20
+    session: Session,
+    season: int | None = None,
+    team: str | None = None,
+    limit: int = 20,
+    flt: PlayFilter | None = None,
 ) -> list[dict[str, Any]]:
     """Most common play types (optionally for a single offense)."""
     stmt = (
@@ -149,14 +158,16 @@ def play_type_mix(
         .order_by(func.count().desc())
         .limit(limit)
     )
-    if team is not None:
-        stmt = stmt.where(Play.offense == team)
-    stmt = _season_filter(stmt, season)
+    stmt = _scope(stmt, season, team, flt)
     return [dict(r._mapping) for r in session.execute(stmt)]
 
 
 def ppa_leaders(
-    session: Session, season: int | None = None, min_plays: int = 200, limit: int = 25
+    session: Session,
+    season: int | None = None,
+    min_plays: int = 200,
+    limit: int = 25,
+    flt: PlayFilter | None = None,
 ) -> list[dict[str, Any]]:
     """Offensive efficiency leaders by average predicted points added (PPA/EPA).
 
@@ -175,7 +186,7 @@ def ppa_leaders(
         .order_by(func.avg(metric).desc())
         .limit(limit)
     )
-    stmt = _season_filter(stmt, season)
+    stmt = _scope(stmt, season, None, flt)
     return [dict(r._mapping) for r in session.execute(stmt)]
 
 
@@ -419,7 +430,11 @@ def _run_pass_scope(stmt):
 
 
 def success_rate(
-    session: Session, season: int | None = None, team: str | None = None, min_plays: int = 1
+    session: Session,
+    season: int | None = None,
+    team: str | None = None,
+    min_plays: int = 1,
+    flt: PlayFilter | None = None,
 ) -> list[dict[str, Any]]:
     """Offensive success rate per team (see `_SUCCESS` for the down thresholds)."""
     stmt = _run_pass_scope(
@@ -429,12 +444,16 @@ def success_rate(
             func.round(func.avg(_SUCCESS), 4).label("success_rate"),
         )
     ).group_by(Play.offense).having(func.count() >= min_plays).order_by(func.avg(_SUCCESS).desc())
-    stmt = _play_scope(stmt, season, team)
+    stmt = _scope(stmt, season, team, flt)
     return [dict(r._mapping) for r in session.execute(stmt)]
 
 
 def explosiveness(
-    session: Session, season: int | None = None, team: str | None = None, min_plays: int = 1
+    session: Session,
+    season: int | None = None,
+    team: str | None = None,
+    min_plays: int = 1,
+    flt: PlayFilter | None = None,
 ) -> list[dict[str, Any]]:
     """Share of a team's plays gaining 15+ yards (an 'explosive' play)."""
     explosive = case((Play.yards_gained >= 15, 1), else_=0)
@@ -449,12 +468,15 @@ def explosiveness(
         .having(func.count() >= min_plays)
         .order_by(func.avg(explosive).desc())
     )
-    stmt = _play_scope(stmt, season, team)
+    stmt = _scope(stmt, season, team, flt)
     return [dict(r._mapping) for r in session.execute(stmt)]
 
 
 def ppa_by_down(
-    session: Session, season: int | None = None, team: str | None = None
+    session: Session,
+    season: int | None = None,
+    team: str | None = None,
+    flt: PlayFilter | None = None,
 ) -> list[dict[str, Any]]:
     """Average PPA/EPA grouped by down (uses `epa` when present, else `ppa`)."""
     metric = func.coalesce(Play.epa, Play.ppa)
@@ -468,5 +490,91 @@ def ppa_by_down(
         .group_by(Play.down)
         .order_by(Play.down)
     )
-    stmt = _play_scope(stmt, season, team)
+    stmt = _scope(stmt, season, team, flt)
     return [dict(r._mapping) for r in session.execute(stmt)]
+
+
+# --- Splits & matchups ----------------------------------------------------
+
+def _record_of(games: list[dict[str, Any]]) -> dict[str, Any]:
+    played = [g for g in games if g["result"] is not None]
+    wins = sum(1 for g in played if g["result"] == "W")
+    losses = sum(1 for g in played if g["result"] == "L")
+    pf = sum(g["points_for"] for g in played)
+    pa = sum(g["points_against"] for g in played)
+    n = len(played)
+    return {
+        "games": n,
+        "record": f"{wins}-{losses}",
+        "points_for": pf,
+        "points_against": pa,
+        "ppg": round(pf / n, 1) if n else None,
+    }
+
+
+def team_splits(session: Session, team: str, season: int) -> dict[str, Any]:
+    """Home/away sub-records + scoring by quarter for a team."""
+    log = team_game_log(session, team, season)
+    quarter = (
+        select(
+            Play.period,
+            func.count().label("scoring_plays"),
+            func.coalesce(func.sum(Play.points_scored), 0).label("points"),
+        )
+        .where(Play.scoring.is_(True))
+        .group_by(Play.period)
+        .order_by(Play.period)
+    )
+    quarter = _scope(quarter, season, team, None)
+    return {
+        "home": _record_of([g for g in log if g["home_away"] == "home"]),
+        "away": _record_of([g for g in log if g["home_away"] == "away"]),
+        "by_quarter": [dict(r._mapping) for r in session.execute(quarter)],
+    }
+
+
+def _team_metrics(session: Session, team: str, season: int) -> dict[str, Any]:
+    """A team's headline metrics for a season (for comparison views)."""
+    flt = PlayFilter(season=season, team=team)
+    sr = success_rate(session, flt=flt)
+    ex = explosiveness(session, flt=flt)
+    ppa = ppa_leaders(session, min_plays=1, flt=flt)
+    return {
+        "summary": team_season_summary(session, team, season),
+        "success_rate": sr[0]["success_rate"] if sr else None,
+        "explosive_rate": ex[0]["explosive_rate"] if ex else None,
+        "avg_ppa": ppa[0]["avg_ppa"] if ppa else None,
+        "scoring_by_field_position": scoring_by_field_position(session, flt=flt),
+    }
+
+
+def team_compare(session: Session, a: str, b: str, season: int) -> dict[str, Any]:
+    """Two teams side by side for a season, plus their head-to-head game(s)."""
+    h2h_stmt = (
+        select(Game)
+        .where(
+            Game.season == season,
+            or_(
+                and_(Game.home_team == a, Game.away_team == b),
+                and_(Game.home_team == b, Game.away_team == a),
+            ),
+        )
+        .order_by(Game.week, Game.id)
+    )
+    head_to_head = [
+        {
+            "game_id": g.id,
+            "week": g.week,
+            "home_team": g.home_team,
+            "home_points": g.home_points,
+            "away_team": g.away_team,
+            "away_points": g.away_points,
+        }
+        for g in session.execute(h2h_stmt).scalars()
+    ]
+    return {
+        "season": season,
+        "a": _team_metrics(session, a, season),
+        "b": _team_metrics(session, b, season),
+        "head_to_head": head_to_head,
+    }
