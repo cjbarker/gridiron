@@ -150,6 +150,41 @@ Schedule it with cron — e.g. every 6 hours during the season:
 uv run pytest          # runs fully offline against the JSON fixtures
 ```
 
+## Deployment (public read-only demo)
+
+A production `Dockerfile` + `docker-compose.prod.yml` build a self-contained image
+that migrates, seeds, and serves the site:
+
+```bash
+docker compose -f docker-compose.prod.yml up --build   # → http://localhost:8000
+```
+
+The container entrypoint (`docker-entrypoint.sh`) runs `alembic upgrade head`, seeds
+the bundled **2023 fixture** *only if the DB is empty* (`SEED_FIXTURES=1`), then runs
+`uvicorn`. `GET /healthz` is the readiness probe. The image is portable — run it on
+any container host or a VPS; the platform's `PORT` env is honored.
+
+> **This default is a read-only DEMO on SQLite.** The web API has no write
+> endpoints, and the seed is the tiny fixture season — enough to browse every page.
+> It persists to a `gridiron_data` volume.
+
+**TODO — production data on Postgres (operator-backfilled).** For real/full data,
+point `DATABASE_URL` at Postgres, set `SEED_FIXTURES=0`, and run a backfill instead
+of the fixture seed. `docker-compose.prod.yml` ships a commented Postgres profile;
+uncomment it, then (once):
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm web \
+    uv run gridiron-ingest --start 2014 --end 2024          # needs CFBD_API_KEY
+# ...or the no-key parquet backfill:
+docker compose -f docker-compose.prod.yml run --rm web \
+    uv run gridiron-ingest --start 2014 --end 2024 --plays-source parquet --stub-games
+```
+
+> Note: this repo builds the deploy artifacts and verifies the entrypoint locally;
+> it does not push to a live host. Point your platform (Fly.io, Render, a VPS, …) at
+> the `Dockerfile` to go live.
+
 ## Roadmap
 
 - **M1 (done):** ingestion pipeline + schema + analytics core + offline tests.
@@ -166,4 +201,8 @@ uv run pytest          # runs fully offline against the JSON fixtures
   coaching records (career page, team panel, browse, winningest leaderboard).
 - **M7 (done):** betting-market closing-line-value (CLV) — opening vs closing line
   movement, per-game movement, team CLV records, and a CLV leaderboard.
-- **Next idea:** a public read-only deploy.
+- **M8 (done):** tooling migrated to uv (`uv sync` + `uv.lock` + `uv run`).
+- **M9 (done):** public read-only deploy — production Dockerfile + compose,
+  migrate/seed/serve entrypoint, and a `/healthz` probe.
+- **TODO:** wire the Postgres profile + operator backfill for full production data,
+  and point a host (Fly.io / Render / VPS) at the image to go live.

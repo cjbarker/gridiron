@@ -55,6 +55,13 @@ if _static.exists():
     app.mount("/static", StaticFiles(directory=str(_static)), name="static")
 
 
+@app.get("/healthz")
+def healthz(db: Session = Depends(get_db)) -> dict:
+    """Liveness/readiness probe: confirms the DB is reachable and reports row count."""
+    teams = db.scalar(select(func.count()).select_from(Team))
+    return {"status": "ok", "teams": teams or 0}
+
+
 @lru_cache
 def _plotly_js() -> str:
     from plotly.offline import get_plotlyjs

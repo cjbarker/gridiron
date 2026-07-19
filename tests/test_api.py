@@ -16,6 +16,13 @@ def client(db_env, fixture_source):
     return TestClient(app)
 
 
+def test_healthz(client):
+    resp = client.get("/healthz")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok" and body["teams"] >= 1
+
+
 def test_teams_endpoint(client):
     resp = client.get("/api/teams")
     assert resp.status_code == 200

@@ -1,0 +1,58 @@
+# Production / public read-only demo.
+#
+#   docker compose -f docker-compose.prod.yml up --build
+#
+# Serves the site at http://localhost:8000, auto-migrated and seeded with the
+# bundled 2023 fixture (a READ-ONLY DEMO on SQLite — the web API has no write
+# endpoints). For real/full data, use the Postgres profile below (TODO) and run an
+# operator backfill instead of the fixture seed.
+
+services:
+  web:
+    build: .
+    image: gridiron:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:////data/gridiron.db
+      SEED_FIXTURES: "1"          # set 0 once you backfill real data
+      PORT: "8000"
+    volumes:
+      - gridiron_data:/data       # persist the SQLite file across restarts
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/healthz').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # --- TODO: production data on Postgres (operator-backfilled) -----------------
+  # Swap the demo SQLite volume for a managed/self-hosted Postgres, seed nothing,
+  # and run a backfill (`uv run gridiron-ingest --start 2014 --end 2024`, or the
+  # parquet backfill). Uncomment and point DATABASE_URL at it:
+  #
+  # db:
+  #   image: postgres:16
+  #   environment:
+  #     POSTGRES_USER: gridiron
+  #     POSTGRES_PASSWORD: gridiron
+  #     POSTGRES_DB: gridiron
+  #   volumes:
+  #     - gridiron_pgdata:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U gridiron"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+  #
+  # Then on `web`: set
+  #   DATABASE_URL: postgresql+psycopg://gridiron:gridiron@db:5432/gridiron
+  #   SEED_FIXTURES: "0"
+  # add `depends_on: [db]`, and (once) run:
+  #   docker compose -f docker-compose.prod.yml run --rm web \
+  #     uv run gridiron-ingest --start 2014 --end 2024
+
+volumes:
+  gridiron_data:
+  # gridiron_pgdata:
