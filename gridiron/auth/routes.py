@@ -7,15 +7,19 @@ responses are deliberately generic to avoid leaking which emails have accounts.
 
 from __future__ import annotations
 
+import secrets
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import EmailStr, TypeAdapter, ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from gridiron.auth import email as email_mod
 from gridiron.auth import security
 from gridiron.config import get_settings
-from gridiron.db.models import User
+from gridiron.db.models import PasswordResetToken, User, utcnow
 from gridiron.db.session import get_db
 from gridiron.templating import templates
 
@@ -113,10 +117,11 @@ def register(
 # --- login / logout ---------------------------------------------------------
 
 @router.get("/login", response_class=HTMLResponse)
-def login_form(request: Request, next: str = "/"):
-    return templates.TemplateResponse(
-        request, "auth/login.html", _auth_context(request, next, None)
-    )
+def login_form(request: Request, next: str = "/", reset: int = 0):
+    context = _auth_context(request, next, None)
+    if reset:
+        context["notice"] = "Your password has been reset. Please log in."
+    return templates.TemplateResponse(request, "auth/login.html", context)
 
 
 @router.post("/login")
@@ -159,3 +164,136 @@ def logout(request: Request, csrf_token: str = Form("")):
         raise HTTPException(status_code=403, detail="invalid CSRF token")
     security.logout_session(request)
     return RedirectResponse("/", status_code=303)
+
+
+# --- password reset ---------------------------------------------------------
+
+@router.get("/reset", response_class=HTMLResponse)
+def reset_request_form(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "auth/reset_request.html",
+        {"csrf_token": security.issue_csrf(request), "sent": False, "error": None},
+    )
+
+
+@router.post("/reset")
+def reset_request(
+    request: Request,
+    db: Session = Depends(get_db),
+    email: str = Form(...),
+    csrf_token: str = Form(""),
+):
+    if not security.verify_csrf(request, csrf_token):
+        raise HTTPException(status_code=403, detail="invalid CSRF token")
+
+    email_norm = normalized_email(email)
+    if email_norm is not None:
+        user = db.scalar(select(User).where(User.email == email_norm))
+        if user is not None:
+            raw = secrets.token_urlsafe(32)
+            ttl = get_settings().password_reset_ttl_minutes
+            db.add(
+                PasswordResetToken(
+                    user_id=user.id,
+                    token_hash=security.hash_token(raw),
+                    expires_at=utcnow() + timedelta(minutes=ttl),
+                )
+            )
+            db.commit()
+            link = f"{get_settings().base_url}/reset/confirm?token={raw}"
+            email_mod.send_email(
+                user.email,
+                "Reset your Gridiron password",
+                f"Someone requested a password reset for your account.\n\n"
+                f"Reset it here (valid for {ttl} minutes):\n{link}\n\n"
+                f"If you didn't request this, you can ignore this email.",
+            )
+
+    # Always the same response — never reveal whether the email has an account.
+    return templates.TemplateResponse(
+        request,
+        "auth/reset_request.html",
+        {"csrf_token": security.issue_csrf(request), "sent": True, "error": None},
+    )
+
+
+def _token_is_valid(db: Session, raw_token: str) -> bool:
+    if not raw_token:
+        return False
+    row = db.scalar(
+        select(PasswordResetToken).where(
+            PasswordResetToken.token_hash == security.hash_token(raw_token),
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > utcnow(),
+        )
+    )
+    return row is not None
+
+
+@router.get("/reset/confirm", response_class=HTMLResponse)
+def reset_confirm_form(request: Request, token: str = "", db: Session = Depends(get_db)):
+    return templates.TemplateResponse(
+        request,
+        "auth/reset_confirm.html",
+        {
+            "csrf_token": security.issue_csrf(request),
+            "token": token,
+            "valid": _token_is_valid(db, token),
+            "error": None,
+        },
+    )
+
+
+@router.post("/reset/confirm")
+def reset_confirm(
+    request: Request,
+    db: Session = Depends(get_db),
+    token: str = Form(""),
+    password: str = Form(...),
+    csrf_token: str = Form(""),
+):
+    if not security.verify_csrf(request, csrf_token):
+        raise HTTPException(status_code=403, detail="invalid CSRF token")
+
+    def _render(error: str, valid: bool = True, status: int = 400):
+        return templates.TemplateResponse(
+            request,
+            "auth/reset_confirm.html",
+            {"csrf_token": security.issue_csrf(request), "token": token, "valid": valid,
+             "error": error},
+            status_code=status,
+        )
+
+    if len(password) < MIN_PASSWORD_LEN:
+        return _render(f"Password must be at least {MIN_PASSWORD_LEN} characters.")
+
+    # Atomically claim the token: only one caller can flip used_at from NULL,
+    # which makes the reset single-use and race-safe (plan KTD6).
+    now = utcnow()
+    claimed = db.execute(
+        update(PasswordResetToken)
+        .where(
+            PasswordResetToken.token_hash == security.hash_token(token),
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > now,
+        )
+        .values(used_at=now)
+    )
+    if claimed.rowcount != 1:
+        db.rollback()
+        return _render("This reset link is invalid or has expired.", valid=False)
+
+    row = db.scalar(
+        select(PasswordResetToken).where(
+            PasswordResetToken.token_hash == security.hash_token(token)
+        )
+    )
+    user = db.get(User, row.user_id)
+    user.hashed_password = security.hash_password(password)
+    db.commit()
+
+    # New password invalidates any pre-existing session for this user via the
+    # session password-fingerprint binding (see security.user_from_request).
+    security.logout_session(request)
+    return RedirectResponse("/login?reset=1", status_code=303)

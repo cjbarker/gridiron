@@ -60,11 +60,21 @@ def hash_token(raw: str) -> str:
 
 # --- sessions ---------------------------------------------------------------
 
+def _pw_fingerprint(hashed: str | None) -> str:
+    """Short, non-reversible marker that changes whenever the password changes.
+
+    Stored in the session at login so a password reset (which changes the hash)
+    invalidates pre-existing sessions without a server-side session store.
+    """
+    return hashlib.sha256((hashed or "").encode("utf-8")).hexdigest()[:16]
+
+
 def login_session(request: Request, user: User) -> None:
     """Establish an authenticated session, rotating the session id."""
     csrf = request.session.get("csrf_token")
     request.session.clear()
     request.session["user_id"] = user.id
+    request.session["pw_fp"] = _pw_fingerprint(user.hashed_password)
     if csrf:
         request.session["csrf_token"] = csrf
 
@@ -82,6 +92,16 @@ def load_user(session: Session, user_id: int | None) -> User | None:
     return user
 
 
+def user_from_request(request: Request, session: Session) -> User | None:
+    """Resolve the session's user, enforcing the password-fingerprint binding."""
+    user = load_user(session, request.session.get("user_id"))
+    if user is None:
+        return None
+    if request.session.get("pw_fp") != _pw_fingerprint(user.hashed_password):
+        return None  # password changed since login — session invalidated
+    return user
+
+
 # --- dependencies -----------------------------------------------------------
 
 class RequiresLogin(Exception):
@@ -93,11 +113,11 @@ class RequiresLogin(Exception):
 
 def current_user(request: Request, db: Session = Depends(get_db)) -> User | None:
     """The authenticated user, or None. Never raises — safe for optional auth."""
-    return load_user(db, request.session.get("user_id"))
+    return user_from_request(request, db)
 
 
 def require_user(request: Request, db: Session = Depends(get_db)) -> User:
-    user = load_user(db, request.session.get("user_id"))
+    user = user_from_request(request, db)
     if user is None:
         raise RequiresLogin(next_url=request.url.path)
     return user
@@ -134,11 +154,10 @@ def template_user(request: Request) -> dict:
     (e.g. the nav logout form in base.html) can post safely. Anonymous requests
     get no token, so no session cookie is created just by viewing a page.
     """
-    user_id = request.session.get("user_id")
-    if not user_id:
+    if not request.session.get("user_id"):
         return {"user": None}
     with get_session_factory()() as session:
-        user = load_user(session, user_id)
+        user = user_from_request(request, session)
         if user is None:
             return {"user": None}
         session.expunge(user)  # detach; columns stay loaded (expire_on_commit=False)
