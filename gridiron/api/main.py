@@ -28,7 +28,6 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
@@ -38,7 +37,8 @@ from gridiron.analytics import predict as pred
 from gridiron.analytics import queries as q
 from gridiron.analytics.backtest import backtest_season
 from gridiron.analytics.filters import PlayFilter
-from gridiron.auth.security import RequiresLogin, template_user
+from gridiron.auth.routes import router as auth_router
+from gridiron.auth.security import RequiresLogin
 from gridiron.config import get_settings
 from gridiron.db.models import (
     Drive,
@@ -49,12 +49,9 @@ from gridiron.db.models import (
     TeamGameStat,
 )
 from gridiron.db.session import get_db
+from gridiron.templating import templates
 
 _HERE = Path(__file__).resolve().parent.parent
-templates = Jinja2Templates(
-    directory=str(_HERE / "web" / "templates"),
-    context_processors=[template_user],  # exposes `user` to every template
-)
 
 app = FastAPI(title="Gridiron", description="College football stats & analysis")
 
@@ -73,6 +70,8 @@ async def _requires_login(request: Request, exc: RequiresLogin) -> RedirectRespo
     """Send anonymous users hitting a protected route to the login page."""
     return RedirectResponse(url=f"/login?next={exc.next_url}", status_code=303)
 
+
+app.include_router(auth_router)
 
 _static = _HERE / "web" / "static"
 if _static.exists():

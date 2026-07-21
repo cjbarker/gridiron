@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Register · Gridiron{% endblock %}
+{% block content %}
+<div class="card" style="max-width:420px;margin:24px auto;">
+  <h2 style="margin-top:0;">Create your account</h2>
+  {% if error %}<p class="loss">{{ error }}</p>{% endif %}
+  <form method="post" action="/register">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    <p><label>Email<br><input type="email" name="email" required autofocus style="width:100%"></label></p>
+    <p><label>Password<br><input type="password" name="password" required minlength="8" style="width:100%"></label>
+       <br><span class="muted" style="font-size:12px;">At least 8 characters.</span></p>
+    <button type="submit">Create account</button>
+  </form>
+  {% if google_enabled %}
+  <p style="margin-top:14px;"><a href="/auth/google/login?next={{ next }}">Continue with Google</a></p>
+  {% endif %}
+  <p class="muted" style="margin-top:14px;">Already have an account?
+     <a href="/login?next={{ next }}">Log in</a></p>
+</div>
+{% endblock %}

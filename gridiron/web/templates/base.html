@@ -48,7 +48,19 @@
       <a href="/compare">Compare</a>
       <a href="/predict">Predict</a>
     </nav>
-    <span class="muted">college football stats &amp; analysis</span>
+    <nav style="margin-left:auto;">
+      {% if user %}
+        <span class="muted">{{ user.email }}</span>
+        <form method="post" action="/logout" style="display:inline;margin:0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit"
+                  style="background:none;color:var(--muted);padding:0;font-weight:400;">Log out</button>
+        </form>
+      {% else %}
+        <a href="/login">Log in</a>
+        <a href="/register">Register</a>
+      {% endif %}
+    </nav>
   </header>
   <main>{% block content %}{% endblock %}</main>
   {% block scripts %}{% endblock %}

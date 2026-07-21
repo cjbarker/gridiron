@@ -128,12 +128,18 @@ def verify_csrf(request: Request, submitted: str | None) -> bool:
 # --- template context -------------------------------------------------------
 
 def template_user(request: Request) -> dict:
-    """Jinja context processor: exposes ``user`` (or None) to every template."""
+    """Jinja context processor: exposes ``user`` (or None) to every template.
+
+    For authenticated users it also exposes ``csrf_token`` so shared chrome
+    (e.g. the nav logout form in base.html) can post safely. Anonymous requests
+    get no token, so no session cookie is created just by viewing a page.
+    """
     user_id = request.session.get("user_id")
     if not user_id:
         return {"user": None}
     with get_session_factory()() as session:
         user = load_user(session, user_id)
-        if user is not None:
-            session.expunge(user)  # detach; columns stay loaded (expire_on_commit=False)
-        return {"user": user}
+        if user is None:
+            return {"user": None}
+        session.expunge(user)  # detach; columns stay loaded (expire_on_commit=False)
+        return {"user": user, "csrf_token": issue_csrf(request)}
