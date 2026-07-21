@@ -11,7 +11,7 @@ so the same models run on SQLite (dev/test) and PostgreSQL (production).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     BigInteger,
@@ -26,6 +26,11 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+def utcnow() -> datetime:
+    """Naive UTC ``now`` — matches the naive ``DateTime`` columns used elsewhere."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Base(DeclarativeBase):
@@ -314,3 +319,61 @@ class Transfer(Base):
     destination: Mapped[str | None] = mapped_column(String(128), index=True)
     rating: Mapped[float | None] = mapped_column(Float)
     stars: Mapped[int | None] = mapped_column(Integer)
+
+
+# --- Authentication ---------------------------------------------------------
+
+class User(Base):
+    """A registered account. ``hashed_password`` is null for OAuth-only users."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)  # stored lowercased
+    hashed_password: Mapped[str | None] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(16), default="user")  # "user" | "admin"
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)  # reserved for email verify
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    oauth_accounts: Mapped[list["OAuthAccount"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == "admin"
+
+
+class OAuthAccount(Base):
+    """A linked third-party identity (e.g. Google) for a :class:`User`."""
+
+    __tablename__ = "oauth_accounts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    provider: Mapped[str] = mapped_column(String(32))  # "google"
+    provider_account_id: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(320))
+
+    user: Mapped["User"] = relationship(back_populates="oauth_accounts")
+
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_account_id", name="uq_oauth_provider_account"),
+    )
+
+
+class PasswordResetToken(Base):
+    """A single-use, time-limited password-reset token.
+
+    Only the SHA-256 hash of the raw token is stored; the raw value lives only
+    in the emailed link. ``used_at`` is set atomically when the token is spent.
+    """
+
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime)
