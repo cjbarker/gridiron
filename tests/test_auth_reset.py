@@ -165,6 +165,30 @@ def test_reset_confirm_unknown_token(client):
     assert resp.status_code == 400 and "invalid or has expired" in resp.text
 
 
+def test_reset_confirm_short_password_preserves_token(client, sent_emails):
+    # A too-short password is rejected BEFORE the token is claimed, so the user's
+    # only reset link is not burned by a fat-fingered attempt.
+    _make_user("shorty@x.com", "oldpassword1")
+    _request_reset(client, "shorty@x.com")
+    token = _TOKEN_RE.search(sent_emails[-1][2]).group(1)
+
+    csrf = _csrf(client, f"/reset/confirm?token={token}")
+    bad = client.post(
+        "/reset/confirm",
+        data={"token": token, "password": "short", "csrf_token": csrf},
+    )
+    assert bad.status_code == 400 and "at least 8" in bad.text
+
+    # Same token still works with a valid password.
+    csrf = _csrf(client, f"/reset/confirm?token={token}")
+    good = client.post(
+        "/reset/confirm",
+        data={"token": token, "password": "brandnewpass1", "csrf_token": csrf},
+        follow_redirects=False,
+    )
+    assert good.status_code == 303
+
+
 def test_reset_confirm_requires_csrf(client, sent_emails):
     _make_user("csrf@x.com")
     _request_reset(client, "csrf@x.com")

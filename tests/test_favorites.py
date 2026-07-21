@@ -108,3 +108,39 @@ def test_favorite_button_hidden_for_anonymous(client):
     page = client.get("/teams/Georgia?season=2023")
     assert page.status_code == 200
     assert "/favorites/add" not in page.text
+
+
+def test_invalid_kind_rejected(client):
+    _register(client)
+    csrf = _CSRF_RE.search(client.get("/").text).group(1)
+    resp = client.post(
+        "/favorites/add",
+        data={"kind": "bogus", "ref": "x", "csrf_token": csrf, "next": "/"},
+    )
+    assert resp.status_code == 400
+    assert _fav_count("fav@x.com") == 0
+
+
+def test_favorites_are_isolated_per_user(client):
+    # User A saves a team.
+    _register(client, "usera@x.com")
+    csrf_a = _CSRF_RE.search(client.get("/").text).group(1)
+    _add(client, "team", "Georgia", csrf_a)
+
+    # User B (separate client) does not see A's favorites and cannot remove them.
+    other = TestClient(client.app)
+    csrf_b = _CSRF_RE.search(other.get("/register").text).group(1)
+    other.post(
+        "/register",
+        data={"email": "userb@x.com", "password": "password123", "csrf_token": csrf_b, "next": "/"},
+        follow_redirects=True,
+    )
+    csrf_b = _CSRF_RE.search(other.get("/").text).group(1)
+    assert "Georgia" not in other.get("/favorites").text
+    other.post(
+        "/favorites/remove",
+        data={"kind": "team", "ref": "Georgia", "csrf_token": csrf_b, "next": "/"},
+        follow_redirects=False,
+    )
+    # A's favorite is untouched.
+    assert _fav_count("usera@x.com") == 1

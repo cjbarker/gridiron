@@ -323,10 +323,14 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     if not sub:
         raise HTTPException(status_code=400, detail="Google sign-in failed")
 
-    user = oauth_mod.find_or_create_google_user(db, sub, userinfo.get("email"))
+    # Capture the post-login destination before login_session clears the session.
+    dest = security.safe_next(request.session.get("oauth_next", "/"))
+    user = oauth_mod.find_or_create_google_user(
+        db, sub, userinfo.get("email"), bool(userinfo.get("email_verified"))
+    )
     maybe_promote_admin(db, user)
     security.login_session(request, user)
-    return RedirectResponse(request.session.pop("oauth_next", "/"), status_code=303)
+    return RedirectResponse(dest, status_code=303)
 
 
 # --- admin ------------------------------------------------------------------

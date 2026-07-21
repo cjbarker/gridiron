@@ -92,3 +92,37 @@ def test_admin_nav_link_visibility(client):
     assert "/admin/users" not in client.get("/").text  # regular user: hidden
     _set_role("navadmin@x.com", "admin")
     assert "/admin/users" in client.get("/").text  # admin: shown
+
+
+# --- ADMIN_EMAILS auto-promotion --------------------------------------------
+
+def test_admin_emails_auto_promote_on_register(client, monkeypatch):
+    from gridiron import config
+
+    monkeypatch.setenv("ADMIN_EMAILS", "boss@x.com")
+    config.get_settings.cache_clear()
+    try:
+        _register(client, "boss@x.com")
+        # The configured email is promoted; /admin/users is reachable.
+        assert client.get("/admin/users").status_code == 200
+        from sqlalchemy import select
+
+        from gridiron.db.models import User
+        from gridiron.db.session import session_scope
+
+        with session_scope() as s:
+            assert s.scalar(select(User.role).where(User.email == "boss@x.com")) == "admin"
+    finally:
+        config.get_settings.cache_clear()
+
+
+def test_non_listed_email_stays_user(client, monkeypatch):
+    from gridiron import config
+
+    monkeypatch.setenv("ADMIN_EMAILS", "boss@x.com")
+    config.get_settings.cache_clear()
+    try:
+        _register(client, "nobody@x.com")
+        assert client.get("/admin/users").status_code == 403
+    finally:
+        config.get_settings.cache_clear()

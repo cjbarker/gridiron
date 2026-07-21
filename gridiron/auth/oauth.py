@@ -37,12 +37,19 @@ def get_oauth() -> OAuth | None:
     return oauth
 
 
-def find_or_create_google_user(db: Session, sub: str, email: str | None) -> User:
+def find_or_create_google_user(
+    db: Session, sub: str, email: str | None, email_verified: bool = False
+) -> User:
     """Resolve the Gridiron account for a Google identity.
 
     Order: (1) existing link by Google ``sub``; (2) existing account with the
-    same verified email — link a new OAuthAccount to it; (3) create a new
+    same **verified** email — link a new OAuthAccount to it; (3) create a new
     passwordless account. Commits and returns the user.
+
+    Linking-by-email and creating an account *at* a real address only happen
+    when Google asserts the email is verified — otherwise the identity is keyed
+    solely on ``sub`` (with a synthetic address), so a token bearing an
+    unverified victim email cannot take over that victim's account.
     """
     account = db.scalar(
         select(OAuthAccount).where(
@@ -53,18 +60,25 @@ def find_or_create_google_user(db: Session, sub: str, email: str | None) -> User
     if account is not None:
         return db.get(User, account.user_id)
 
-    email_norm = email.lower() if email else None
+    # Only a verified email is trusted for lookup/creation against a real address.
+    trusted_email = email.lower() if (email and email_verified) else None
     user = (
-        db.scalar(select(User).where(User.email == email_norm)) if email_norm else None
+        db.scalar(select(User).where(User.email == trusted_email)) if trusted_email else None
     )
     if user is None:
-        user = User(email=email_norm or f"google_{sub}@users.noreply", is_verified=True)
+        user = User(
+            email=trusted_email or f"google_{sub}@users.noreply",
+            is_verified=bool(email_verified),
+        )
         db.add(user)
         db.flush()
 
     db.add(
         OAuthAccount(
-            user_id=user.id, provider="google", provider_account_id=sub, email=email_norm
+            user_id=user.id,
+            provider="google",
+            provider_account_id=sub,
+            email=email.lower() if email else None,
         )
     )
     db.commit()

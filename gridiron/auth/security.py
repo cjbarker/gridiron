@@ -21,6 +21,11 @@ from gridiron.db.session import get_db, get_session_factory
 # Argon2id (with bcrypt backward-compat) via pwdlib — see plan KTD2.
 _pwd = PasswordHash.recommended()
 
+# A fixed hash used to equalize login timing for unknown emails (see
+# verify_and_upgrade) so a nonexistent account can't be distinguished from a
+# wrong password by response latency.
+_DUMMY_HASH = _pwd.hash("timing-equalization-dummy")
+
 
 # --- password hashing -------------------------------------------------------
 
@@ -44,6 +49,12 @@ def verify_and_upgrade(password: str, hashed: str | None) -> tuple[bool, str | N
     Returns ``(valid, new_hash_or_None)``. Callers persist ``new_hash`` when set.
     """
     if not hashed:
+        # Do equivalent Argon2 work against a dummy hash so the unknown-email
+        # login path costs the same as a wrong-password path (no timing oracle).
+        try:
+            _pwd.verify(password, _DUMMY_HASH)
+        except Exception:
+            pass
         return False, None
     try:
         return _pwd.verify_and_update(password, hashed)
@@ -148,8 +159,18 @@ def verify_csrf(request: Request, submitted: str | None) -> bool:
 # --- redirects --------------------------------------------------------------
 
 def safe_next(target: str | None) -> str:
-    """Only permit local redirects — blocks open-redirect via a ``next`` param."""
-    if target and target.startswith("/") and not target.startswith("//"):
+    """Only permit local redirects — blocks open-redirect via a ``next`` param.
+
+    Requires a single leading slash and no backslashes: browsers normalize ``\\``
+    to ``/``, so ``/\\evil.com`` would otherwise become a protocol-relative
+    redirect to ``evil.com``.
+    """
+    if (
+        target
+        and target.startswith("/")
+        and not target.startswith("//")
+        and "\\" not in target
+    ):
         return target
     return "/"
 

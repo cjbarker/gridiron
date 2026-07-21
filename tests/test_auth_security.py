@@ -142,3 +142,21 @@ def test_csrf_issue_and_verify():
     assert verify_csrf(req, "tampered") is False
     assert verify_csrf(req, None) is False
     assert verify_csrf(SimpleNamespace(session={}), token) is False  # no session token
+
+
+def test_safe_next_blocks_open_redirects():
+    from gridiron.auth.security import safe_next
+
+    # Local paths pass through.
+    assert safe_next("/teams/Georgia") == "/teams/Georgia"
+    assert safe_next("/favorites?x=1") == "/favorites?x=1"
+    # Off-site and protocol-relative are rejected.
+    assert safe_next("https://evil.com") == "/"
+    assert safe_next("//evil.com") == "/"
+    assert safe_next("http://evil.com") == "/"
+    # Backslash bypass (browsers normalize \ to /) is rejected.
+    assert safe_next("/\\evil.com") == "/"
+    assert safe_next("/\\/evil.com") == "/"
+    # Empty / None default to root.
+    assert safe_next("") == "/"
+    assert safe_next(None) == "/"
