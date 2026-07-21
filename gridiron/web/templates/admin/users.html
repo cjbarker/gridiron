@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Users · Admin · Gridiron{% endblock %}
+{% block content %}
+<div class="card">
+  <h2 style="margin-top:0;">Users <span class="muted" style="font-size:14px;">({{ users|length }})</span></h2>
+  <table>
+    <thead>
+      <tr><th>Email</th><th>Role</th><th>Verified</th><th>Joined</th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.email }}</td>
+        <td>{% if u.is_admin %}<span class="pill">admin</span>{% else %}{{ u.role }}{% endif %}</td>
+        <td class="muted">{{ "yes" if u.is_verified else "no" }}</td>
+        <td class="muted">{{ u.created_at.strftime("%Y-%m-%d") if u.created_at else "" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

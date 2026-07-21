@@ -50,6 +50,7 @@
     </nav>
     <nav style="margin-left:auto;">
       {% if user %}
+        {% if user.is_admin %}<a href="/admin/users">Admin</a>{% endif %}
         <span class="muted">{{ user.email }}</span>
         <form method="post" action="/logout" style="display:inline;margin:0;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

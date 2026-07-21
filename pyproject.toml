@@ -45,6 +45,7 @@ dev = ["pytest>=8.0", "ruff>=0.4", "scikit-learn>=1.4"]
 gridiron-ingest = "gridiron.ingest.cli:main"
 gridiron-refresh = "gridiron.ingest.cli:refresh_main"
 gridiron-initdb = "gridiron.db.init_db:main"
+gridiron-admin = "gridiron.auth.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]

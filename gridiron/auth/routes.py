@@ -331,3 +331,15 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     maybe_promote_admin(db, user)
     security.login_session(request, user)
     return RedirectResponse(request.session.pop("oauth_next", "/"), status_code=303)
+
+
+# --- admin ------------------------------------------------------------------
+
+@router.get("/admin/users", response_class=HTMLResponse)
+def admin_users(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(security.require_admin),
+):
+    users = db.execute(select(User).order_by(User.created_at.desc())).scalars().all()
+    return templates.TemplateResponse(request, "admin/users.html", {"users": users})
