@@ -17,6 +17,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from gridiron.auth import email as email_mod
+from gridiron.auth import oauth as oauth_mod
 from gridiron.auth import security
 from gridiron.config import get_settings
 from gridiron.db.models import PasswordResetToken, User, utcnow
@@ -297,3 +298,36 @@ def reset_confirm(
     # session password-fingerprint binding (see security.user_from_request).
     security.logout_session(request)
     return RedirectResponse("/login?reset=1", status_code=303)
+
+
+# --- Google SSO -------------------------------------------------------------
+
+@router.get("/auth/google/login")
+async def google_login(request: Request, next: str = "/"):
+    oauth = oauth_mod.get_oauth()
+    if oauth is None:
+        raise HTTPException(status_code=404, detail="Google sign-in is not configured")
+    request.session["oauth_next"] = safe_next(next)
+    redirect_uri = str(request.url_for("google_callback"))
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+
+@router.get("/auth/google/callback", name="google_callback")
+async def google_callback(request: Request, db: Session = Depends(get_db)):
+    oauth = oauth_mod.get_oauth()
+    if oauth is None:
+        raise HTTPException(status_code=404, detail="Google sign-in is not configured")
+    try:
+        token = await oauth.google.authorize_access_token(request)  # verifies state
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Google sign-in failed") from exc
+
+    userinfo = token.get("userinfo") or {}
+    sub = userinfo.get("sub")
+    if not sub:
+        raise HTTPException(status_code=400, detail="Google sign-in failed")
+
+    user = oauth_mod.find_or_create_google_user(db, sub, userinfo.get("email"))
+    maybe_promote_admin(db, user)
+    security.login_session(request, user)
+    return RedirectResponse(request.session.pop("oauth_next", "/"), status_code=303)
