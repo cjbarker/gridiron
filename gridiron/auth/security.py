@@ -145,6 +145,15 @@ def verify_csrf(request: Request, submitted: str | None) -> bool:
     return bool(token and submitted and hmac.compare_digest(token, submitted))
 
 
+# --- redirects --------------------------------------------------------------
+
+def safe_next(target: str | None) -> str:
+    """Only permit local redirects — blocks open-redirect via a ``next`` param."""
+    if target and target.startswith("/") and not target.startswith("//"):
+        return target
+    return "/"
+
+
 # --- template context -------------------------------------------------------
 
 def template_user(request: Request) -> dict:

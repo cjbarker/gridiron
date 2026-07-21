@@ -45,11 +45,7 @@ def normalized_email(raw: str) -> str | None:
         return None
 
 
-def safe_next(target: str | None) -> str:
-    """Only permit local redirects — blocks open-redirect via ``next``."""
-    if target and target.startswith("/") and not target.startswith("//"):
-        return target
-    return "/"
+safe_next = security.safe_next
 
 
 def maybe_promote_admin(db: Session, user: User) -> None:

@@ -339,6 +339,9 @@ class User(Base):
     oauth_accounts: Mapped[list["OAuthAccount"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    favorites: Mapped[list["Favorite"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     @property
     def is_admin(self) -> bool:
@@ -377,3 +380,20 @@ class PasswordResetToken(Base):
     token_hash: Mapped[str] = mapped_column(String(64), index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
     used_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class Favorite(Base):
+    """A team or player a :class:`User` has saved."""
+
+    __tablename__ = "favorites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))  # "team" | "player"
+    ref: Mapped[str] = mapped_column(String(128))  # team school or player id
+
+    user: Mapped["User"] = relationship(back_populates="favorites")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "kind", "ref", name="uq_favorite"),
+    )

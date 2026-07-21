@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}My Favorites · Gridiron{% endblock %}
+{% block content %}
+<div class="card">
+  <h2 style="margin-top:0;">My Favorites</h2>
+
+  <h3>Teams</h3>
+  {% if teams %}
+    <ul>{% for t in teams %}<li><a href="/teams/{{ t }}">{{ t }}</a></li>{% endfor %}</ul>
+  {% else %}
+    <p class="muted">No saved teams yet. Visit a team page and hit “☆ Save”.</p>
+  {% endif %}
+
+  <h3>Players</h3>
+  {% if players %}
+    <ul>{% for p in players %}<li><a href="/players/{{ p.id }}">{{ p.name }}</a></li>{% endfor %}</ul>
+  {% else %}
+    <p class="muted">No saved players yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -37,8 +37,10 @@ from gridiron.analytics import predict as pred
 from gridiron.analytics import queries as q
 from gridiron.analytics.backtest import backtest_season
 from gridiron.analytics.filters import PlayFilter
+from gridiron.auth.favorites import is_favorited
+from gridiron.auth.favorites import router as favorites_router
 from gridiron.auth.routes import router as auth_router
-from gridiron.auth.security import RequiresLogin
+from gridiron.auth.security import RequiresLogin, current_user
 from gridiron.config import get_settings
 from gridiron.db.models import (
     Drive,
@@ -72,6 +74,7 @@ async def _requires_login(request: Request, exc: RequiresLogin) -> RedirectRespo
 
 
 app.include_router(auth_router)
+app.include_router(favorites_router)
 
 _static = _HERE / "web" / "static"
 if _static.exists():
@@ -785,6 +788,7 @@ def page_team(
     distance_min: int | None = None,
     distance_max: int | None = None,
     db: Session = Depends(get_db),
+    user=Depends(current_user),
 ) -> HTMLResponse:
     season = _current_season(db, season)
     game_log = q.team_game_log(db, team, season) if season is not None else []
@@ -831,6 +835,7 @@ def page_team(
             "figures": figures,
             "filters": filters,
             "filters_active": any(filters.values()),
+            "is_favorite": is_favorited(db, user, "team", team),
         },
     )
 
@@ -853,7 +858,11 @@ def page_players(
 
 @app.get("/players/{player_id}", response_class=HTMLResponse)
 def page_player(
-    request: Request, player_id: int, season: int | None = None, db: Session = Depends(get_db)
+    request: Request,
+    player_id: int,
+    season: int | None = None,
+    db: Session = Depends(get_db),
+    user=Depends(current_user),
 ) -> HTMLResponse:
     profile = q.player_profile(db, player_id)
     if profile is None:
@@ -867,6 +876,7 @@ def page_player(
             "season_stats": q.player_season_stats(db, player_id, season),
             "game_log": q.player_game_log(db, player_id, season),
             "wpa": q.player_wpa(db, profile["name"], season) if profile.get("name") else None,
+            "is_favorite": is_favorited(db, user, "player", str(player_id)),
         },
     )
 
