@@ -1,0 +1,846 @@
+{
+ "season": {
+  "type": 2,
+  "year": 2023
+ },
+ "week": {
+  "number": 1
+ },
+ "events": [
+  {
+   "id": "401523986",
+   "uid": "s:20~l:23~e:401523986",
+   "date": "2023-08-27T00:00Z",
+   "name": "San Jos\u00e9 State Spartans at USC Trojans",
+   "shortName": "SJSU @ USC",
+   "season": {
+    "year": 2023,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 1
+   },
+   "competitions": [
+    {
+     "id": "401523986",
+     "uid": "s:20~l:23~e:401523986~c:401523986",
+     "date": "2023-08-27T00:00Z",
+     "attendance": 63411,
+     "type": {
+      "id": "1",
+      "abbreviation": "STD"
+     },
+     "timeValid": true,
+     "dateValid": true,
+     "neutralSite": false,
+     "conferenceCompetition": false,
+     "playByPlayAvailable": true,
+     "recent": false,
+     "venue": {
+      "id": "477",
+      "fullName": "Los Angeles Memorial Coliseum",
+      "address": {
+       "city": "Los Angeles",
+       "state": "CA",
+       "country": "USA"
+      },
+      "indoor": false
+     },
+     "competitors": [
+      {
+       "id": "30",
+       "uid": "s:20~l:23~t:30",
+       "type": "team",
+       "order": 0,
+       "homeAway": "home",
+       "winner": true,
+       "team": {
+        "id": "30",
+        "uid": "s:20~l:23~t:30",
+        "location": "USC",
+        "name": "Trojans",
+        "abbreviation": "USC",
+        "displayName": "USC Trojans",
+        "shortDisplayName": "USC",
+        "color": "9d2235",
+        "alternateColor": "ffc72c",
+        "isActive": true,
+        "venue": {
+         "id": "477"
+        },
+        "links": [
+         {
+          "rel": [
+           "clubhouse",
+           "desktop",
+           "team"
+          ],
+          "href": "https://www.espn.com/college-football/team/_/id/30/usc-trojans",
+          "text": "Clubhouse",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "clubhouse",
+           "mobile",
+           "team"
+          ],
+          "href": "https://www.espn.com/college-football/team/_/id/30/usc-trojans",
+          "text": "Clubhouse",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "roster",
+           "desktop",
+           "team"
+          ],
+          "href": "https://www.espn.com/college-football/team/roster/_/id/30",
+          "text": "Roster",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "roster",
+           "sportscenter",
+           "app",
+           "team"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23~t:30&section=roster",
+          "text": "Roster",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "stats",
+           "desktop",
+           "team"
+          ],
+          "href": "https://www.espn.com/college-football/team/stats/_/id/30",
+          "text": "Statistics",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "stats",
+           "sportscenter",
+           "app",
+           "team"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23~t:30&section=stats",
+          "text": "Statistics",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "schedule",
+           "desktop",
+           "team"
+          ],
+          "href": "https://www.espn.com/college-football/team/schedule/_/id/30",
+          "text": "Schedule",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "schedule",
+           "sportscenter",
+           "app",
+           "team"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23~t:30&section=scores",
+          "text": "Schedule",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/30.png",
+        "conferenceId": "9"
+       },
+       "score": "56",
+       "linescores": [
+        {
+         "value": 7.0,
+         "displayValue": "7",
+         "period": 1
+        },
+        {
+         "value": 14.0,
+         "displayValue": "14",
+         "period": 2
+        },
+        {
+         "value": 21.0,
+         "displayValue": "21",
+         "period": 3
+        },
+        {
+         "value": 14.0,
+         "displayValue": "14",
+         "period": 4
+        }
+       ],
+       "statistics": [],
+       "curatedRank": {
+        "current": 6
+       },
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "Game",
+         "type": "total",
+         "summary": "1-0"
+        },
+        {
+         "name": "Home",
+         "type": "home",
+         "summary": "1-0"
+        },
+        {
+         "name": "Road",
+         "type": "road",
+         "summary": "0-0"
+        },
+        {
+         "name": "vs. Conf.",
+         "type": "vsconf",
+         "summary": "0-0"
+        }
+       ]
+      },
+      {
+       "id": "23",
+       "uid": "s:20~l:23~t:23",
+       "type": "team",
+       "order": 1,
+       "homeAway": "away",
+       "winner": false,
+       "team": {
+        "id": "23",
+        "uid": "s:20~l:23~t:23",
+        "location": "San Jos\u00e9 State",
+        "name": "Spartans",
+        "abbreviation": "SJSU",
+        "displayName": "San Jos\u00e9 State Spartans",
+        "shortDisplayName": "San Jos\u00e9 St",
+        "color": "0038a8",
+        "alternateColor": "ffb81a",
+        "isActive": true,
+        "venue": {
+         "id": "3935"
+        },
+        "links": [
+         {
+          "rel": [
+           "clubhouse",
+           "desktop",
+           "team"
+          ],
+          "href": "https://www.espn.com/college-football/team/_/id/23/san-jose-state-spartans",
+          "text": "Clubhouse",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "clubhouse",
+           "mobile",
+           "team"
+          ],
+          "href": "https://www.espn.com/college-football/team/_/id/23/san-jose-state-spartans",
+          "text": "Clubhouse",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "roster",
+           "desktop",
+           "team"
+          ],
+          "href": "https://www.espn.com/college-football/team/roster/_/id/23",
+          "text": "Roster",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "roster",
+           "sportscenter",
+           "app",
+           "team"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23~t:23&section=roster",
+          "text": "Roster",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "stats",
+           "desktop",
+           "team"
+          ],
+          "href": "https://www.espn.com/college-football/team/stats/_/id/23",
+          "text": "Statistics",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "stats",
+           "sportscenter",
+           "app",
+           "team"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23~t:23&section=stats",
+          "text": "Statistics",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "schedule",
+           "desktop",
+           "team"
+          ],
+          "href": "https://www.espn.com/college-football/team/schedule/_/id/23",
+          "text": "Schedule",
+          "isExternal": false,
+          "isPremium": false
+         },
+         {
+          "rel": [
+           "schedule",
+           "sportscenter",
+           "app",
+           "team"
+          ],
+          "href": "sportscenter://x-callback-url/showClubhouse?uid=s:20~l:23~t:23&section=scores",
+          "text": "Schedule",
+          "isExternal": false,
+          "isPremium": false
+         }
+        ],
+        "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/23.png",
+        "conferenceId": "17"
+       },
+       "score": "28",
+       "linescores": [
+        {
+         "value": 0.0,
+         "displayValue": "0",
+         "period": 1
+        },
+        {
+         "value": 14.0,
+         "displayValue": "14",
+         "period": 2
+        },
+        {
+         "value": 7.0,
+         "displayValue": "7",
+         "period": 3
+        },
+        {
+         "value": 7.0,
+         "displayValue": "7",
+         "period": 4
+        }
+       ],
+       "statistics": [],
+       "curatedRank": {
+        "current": 99
+       },
+       "records": [
+        {
+         "name": "overall",
+         "abbreviation": "Game",
+         "type": "total",
+         "summary": "0-1"
+        },
+        {
+         "name": "Home",
+         "type": "home",
+         "summary": "0-0"
+        },
+        {
+         "name": "Road",
+         "type": "road",
+         "summary": "0-1"
+        },
+        {
+         "name": "vs. Conf.",
+         "type": "vsconf",
+         "summary": "0-0"
+        }
+       ]
+      }
+     ],
+     "notes": [],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "id": "3",
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "description": "Final",
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     },
+     "broadcasts": [
+      {
+       "market": "national",
+       "names": [
+        "PACN"
+       ]
+      }
+     ],
+     "leaders": [
+      {
+       "name": "passingYards",
+       "displayName": "Passing Leader",
+       "shortDisplayName": "PASS",
+       "abbreviation": "PYDS",
+       "leaders": [
+        {
+         "displayValue": "18/25, 278 YDS, 4 TD",
+         "value": 278.0,
+         "athlete": {
+          "id": "4431611",
+          "fullName": "Caleb Williams",
+          "displayName": "Caleb Williams",
+          "shortName": "C. Williams",
+          "links": [
+           {
+            "rel": [
+             "playercard",
+             "desktop",
+             "athlete"
+            ],
+            "href": "https://www.espn.com/college-football/player/_/id/4431611/caleb-williams"
+           }
+          ],
+          "headshot": "https://a.espncdn.com/i/headshots/college-football/players/full/4431611.png",
+          "jersey": "13",
+          "position": {
+           "abbreviation": "QB"
+          },
+          "team": {
+           "id": "30"
+          },
+          "active": false
+         },
+         "team": {
+          "id": "30"
+         }
+        }
+       ]
+      },
+      {
+       "name": "rushingYards",
+       "displayName": "Rushing Leader",
+       "shortDisplayName": "RUSH",
+       "abbreviation": "RYDS",
+       "leaders": [
+        {
+         "displayValue": "6 CAR, 108 YDS",
+         "value": 108.0,
+         "athlete": {
+          "id": "4694583",
+          "fullName": "Quali Conley",
+          "displayName": "Quali Conley",
+          "shortName": "Q. Conley",
+          "links": [
+           {
+            "rel": [
+             "playercard",
+             "desktop",
+             "athlete"
+            ],
+            "href": "https://www.espn.com/college-football/player/_/id/4694583/quali-conley"
+           }
+          ],
+          "headshot": "https://a.espncdn.com/i/headshots/college-football/players/full/4694583.png",
+          "jersey": "7",
+          "position": {
+           "abbreviation": "RB"
+          },
+          "team": {
+           "id": "23"
+          },
+          "active": false
+         },
+         "team": {
+          "id": "23"
+         }
+        }
+       ]
+      },
+      {
+       "name": "receivingYards",
+       "displayName": "Receiving Leader",
+       "shortDisplayName": "REC",
+       "abbreviation": "RECYDS",
+       "leaders": [
+        {
+         "displayValue": "6 REC, 89 YDS, 3 TD",
+         "value": 89.0,
+         "athlete": {
+          "id": "4570242",
+          "fullName": "Nick Nash",
+          "displayName": "Nick Nash",
+          "shortName": "N. Nash",
+          "links": [
+           {
+            "rel": [
+             "playercard",
+             "desktop",
+             "athlete"
+            ],
+            "href": "https://www.espn.com/college-football/player/_/id/4570242/nick-nash"
+           }
+          ],
+          "headshot": "https://a.espncdn.com/i/headshots/college-football/players/full/4570242.png",
+          "jersey": "3",
+          "position": {
+           "abbreviation": "WR"
+          },
+          "team": {
+           "id": "23"
+          },
+          "active": false
+         },
+         "team": {
+          "id": "23"
+         }
+        }
+       ]
+      }
+     ],
+     "format": {
+      "regulation": {
+       "periods": 4
+      }
+     },
+     "startDate": "2023-08-27T00:00Z",
+     "broadcast": "PACN",
+     "geoBroadcasts": [
+      {
+       "type": {
+        "id": "1",
+        "shortName": "TV"
+       },
+       "market": {
+        "id": "1",
+        "type": "National"
+       },
+       "media": {
+        "shortName": "PACN"
+       },
+       "lang": "en",
+       "region": "us"
+      }
+     ],
+     "highlights": [
+      {
+       "id": 38268149,
+       "cerebroId": "64eac375be6ab33eb1bff0c8",
+       "source": "espn",
+       "headline": "Caleb Williams shines with 4-TD performance in USC's opener",
+       "description": "Caleb Williams lights up San Jose State with a 278-yard, four-touchdown game in a win for USC.",
+       "lastModified": "2023-08-27T04:07:48Z",
+       "originalPublishDate": "2023-08-27T03:31:02Z",
+       "duration": 104,
+       "timeRestrictions": {
+        "embargoDate": "2023-08-27T03:30:58Z",
+        "expirationDate": "2038-01-01T04:59:59Z"
+       },
+       "deviceRestrictions": {
+        "devices": [
+         "settop",
+         "tablet",
+         "handset",
+         "ipad",
+         "desktop"
+        ],
+        "type": "whitelist"
+       },
+       "thumbnail": "https://espnmedia-cdn.akamaized.net/espn/media/common/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.jpg",
+       "links": {
+        "api": {
+         "artwork": {
+          "href": "https://artwork.api.espn.com/artwork/collections/media/c32d26b0-3af3-4da2-9065-00094a0ce54e"
+         },
+         "self": {
+          "href": "https://content.core.api.espn.com/v1/video/clips/38268149"
+         }
+        },
+        "mobile": {
+         "href": "https://watch.auth.api.espn.com/video/auth/brightcove/c32d26b0-3af3-4da2-9065-00094a0ce54e/asset?UMADPARAMreferer=http://www.espn.com/video/clip?id=38268149",
+         "alert": {
+          "href": "https://m.espn.com/general/video/videoAlert?vid=38268149"
+         },
+         "progressiveDownload": {
+          "href": "https://watch.auth.api.espn.com/video/auth/brightcove/c32d26b0-3af3-4da2-9065-00094a0ce54e/asset?UMADPARAMreferer=http://www.espn.com/video/clip?id=38268149"
+         },
+         "source": {
+          "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+         },
+         "streaming": {
+          "href": "https://watch.auth.api.espn.com/video/auth/brightcove/c32d26b0-3af3-4da2-9065-00094a0ce54e/asset?UMADPARAMreferer=http://www.espn.com/video/clip?id=38268149"
+         }
+        },
+        "source": {
+         "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4",
+         "HD": {
+          "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+         },
+         "HLS": {
+          "href": "https://cmp-espn.media.dssott.com/opp/hls/espn/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716/playlist.m3u8",
+          "HD": {
+           "href": "https://cmp-espn.media.dssott.com/opp/hls/espn/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716/playlist.m3u8"
+          },
+          "cmaf": {
+           "href": "https://cmp-espn.media.dssott.com/opp/cmaf/espn/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716/playlist.m3u8"
+          },
+          "shield": {
+           "href": "https://watch.auth.api.espn.com/video/auth/media/c32d26b0-3af3-4da2-9065-00094a0ce54e/asset"
+          }
+         },
+         "flash": {
+          "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+         },
+         "full": {
+          "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+         },
+         "hds": {
+          "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+         },
+         "mezzanine": {
+          "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+         }
+        },
+        "sportscenter": {
+         "href": "sportscenter://x-callback-url/showVideo?videoID=38268149&videoDSI=6d0ad338cc2bc"
+        },
+        "web": {
+         "href": "https://www.espn.com/video/clip?id=38268149",
+         "self": {
+          "href": "https://www.espn.com/video/clip?id=38268149",
+          "dsi": {
+           "href": "https://www.espn.com/video/clip?id=6d0ad338cc2bc"
+          }
+         }
+        }
+       },
+       "ad": {
+        "bundle": "ncf_instant_replays",
+        "sport": "ncf"
+       },
+       "tracking": {
+        "coverageType": "Final Game Highlight",
+        "leagueName": "NCAA Football",
+        "sportName": "football",
+        "trackingId": "dm_null_NCF_caleb_williams_shines_with_4td_performance_in_uscs_opener",
+        "trackingName": "COM_NCF Highlight (Caleb Williams shines with 4-TD performance in USC's opener) null ESHEET STOFULL"
+       }
+      }
+     ],
+     "headlines": [
+      {
+       "type": "Recap",
+       "description": "\u2014 Zachariah Branch caught a short pass from Caleb Williams and accelerated, turning defenders into turnstiles as he zigzagged downfield. The freshman then broke out Cristiano Ronaldo's iconic goal celebration for his first touchdown, leaping and...",
+       "shortLinkText": "Heisman winner Caleb Williams throws 4 TD passes, leads No. 6 USC past San Jose State 56-28",
+       "video": [
+        {
+         "id": 38268149,
+         "source": "espn",
+         "headline": "Caleb Williams shines with 4-TD performance in USC's opener",
+         "thumbnail": "https://espnmedia-cdn.akamaized.net/espn/media/common/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.jpg",
+         "duration": 104,
+         "tracking": {
+          "coverageType": "Final Game Highlight",
+          "leagueName": "NCAA Football",
+          "sportName": "football",
+          "trackingId": "dm_null_NCF_caleb_williams_shines_with_4td_performance_in_uscs_opener",
+          "trackingName": "COM_NCF Highlight (Caleb Williams shines with 4-TD performance in USC's opener) null ESHEET STOFULL"
+         },
+         "deviceRestrictions": {
+          "devices": [
+           "settop",
+           "tablet",
+           "handset",
+           "ipad",
+           "desktop"
+          ],
+          "type": "whitelist"
+         },
+         "links": {
+          "api": {
+           "artwork": {
+            "href": "https://artwork.api.espn.com/artwork/collections/media/c32d26b0-3af3-4da2-9065-00094a0ce54e"
+           },
+           "self": {
+            "href": "https://content.core.api.espn.com/v1/video/clips/38268149"
+           }
+          },
+          "mobile": {
+           "href": "https://watch.auth.api.espn.com/video/auth/brightcove/c32d26b0-3af3-4da2-9065-00094a0ce54e/asset?UMADPARAMreferer=http://www.espn.com/video/clip?id=38268149",
+           "alert": {
+            "href": "https://m.espn.com/general/video/videoAlert?vid=38268149"
+           },
+           "progressiveDownload": {
+            "href": "https://watch.auth.api.espn.com/video/auth/brightcove/c32d26b0-3af3-4da2-9065-00094a0ce54e/asset?UMADPARAMreferer=http://www.espn.com/video/clip?id=38268149"
+           },
+           "source": {
+            "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+           },
+           "streaming": {
+            "href": "https://watch.auth.api.espn.com/video/auth/brightcove/c32d26b0-3af3-4da2-9065-00094a0ce54e/asset?UMADPARAMreferer=http://www.espn.com/video/clip?id=38268149"
+           }
+          },
+          "source": {
+           "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4",
+           "HD": {
+            "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+           },
+           "HLS": {
+            "href": "https://cmp-espn.media.dssott.com/opp/hls/espn/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716/playlist.m3u8",
+            "HD": {
+             "href": "https://cmp-espn.media.dssott.com/opp/hls/espn/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716/playlist.m3u8"
+            },
+            "cmaf": {
+             "href": "https://cmp-espn.media.dssott.com/opp/cmaf/espn/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716/playlist.m3u8"
+            },
+            "shield": {
+             "href": "https://watch.auth.api.espn.com/video/auth/media/c32d26b0-3af3-4da2-9065-00094a0ce54e/asset"
+            }
+           },
+           "flash": {
+            "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+           },
+           "full": {
+            "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+           },
+           "hds": {
+            "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+           },
+           "mezzanine": {
+            "href": "https://espnmedia-cdn.akamaized.net/espn/media/16x9/2023/0826/ss_20230826_233103189_2324716/ss_20230826_233103189_2324716.mp4"
+           }
+          },
+          "sportscenter": {
+           "href": "sportscenter://x-callback-url/showVideo?videoID=38268149&videoDSI=6d0ad338cc2bc"
+          },
+          "web": {
+           "href": "https://www.espn.com/video/clip?id=38268149",
+           "self": {
+            "href": "https://www.espn.com/video/clip?id=38268149",
+            "dsi": {
+             "href": "https://www.espn.com/video/clip?id=6d0ad338cc2bc"
+            }
+           }
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "links": [
+    {
+     "language": "en-US",
+     "rel": [
+      "summary",
+      "desktop",
+      "event"
+     ],
+     "href": "https://www.espn.com/college-football/game/_/gameId/401523986/san-jose-st-usc",
+     "text": "Gamecast",
+     "shortText": "Gamecast",
+     "isExternal": false,
+     "isPremium": false
+    },
+    {
+     "language": "en-US",
+     "rel": [
+      "boxscore",
+      "desktop",
+      "event"
+     ],
+     "href": "https://www.espn.com/college-football/boxscore/_/gameId/401523986",
+     "text": "Box Score",
+     "shortText": "Box Score",
+     "isExternal": false,
+     "isPremium": false
+    },
+    {
+     "language": "en-US",
+     "rel": [
+      "highlights",
+      "desktop"
+     ],
+     "href": "https://www.espn.com/college-football/video?gameId=401523986",
+     "text": "Highlights",
+     "shortText": "Highlights",
+     "isExternal": false,
+     "isPremium": false
+    },
+    {
+     "language": "en-US",
+     "rel": [
+      "pbp",
+      "desktop",
+      "event"
+     ],
+     "href": "https://www.espn.com/college-football/playbyplay/_/gameId/401523986",
+     "text": "Play-by-Play",
+     "shortText": "Play-by-Play",
+     "isExternal": false,
+     "isPremium": false
+    },
+    {
+     "language": "en-US",
+     "rel": [
+      "recap",
+      "desktop",
+      "event"
+     ],
+     "href": "https://www.espn.com/college-football/recap?gameId=401523986",
+     "text": "Recap",
+     "shortText": "Recap",
+     "isExternal": false,
+     "isPremium": false
+    }
+   ],
+   "status": {
+    "clock": 0.0,
+    "displayClock": "0:00",
+    "period": 4,
+    "type": {
+     "id": "3",
+     "name": "STATUS_FINAL",
+     "state": "post",
+     "completed": true,
+     "description": "Final",
+     "detail": "Final",
+     "shortDetail": "Final"
+    }
+   }
+  }
+ ]
+}

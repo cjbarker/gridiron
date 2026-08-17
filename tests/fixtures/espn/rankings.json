@@ -1,0 +1,103 @@
+{
+ "requestedSeason": {
+  "year": 2026,
+  "displayName": "2026",
+  "type": {
+   "type": 1,
+   "name": "Preseason"
+  },
+  "week": {
+   "number": 1,
+   "type": "week",
+   "last": false,
+   "value": "1",
+   "displayValue": "Preseason"
+  }
+ },
+ "latestWeek": {
+  "number": 1,
+  "type": "week",
+  "last": false,
+  "value": "1",
+  "displayValue": "Preseason"
+ },
+ "rankings": [
+  {
+   "name": "AFCA Coaches Poll",
+   "shortName": "AFCA Coaches Poll",
+   "type": "usa",
+   "occurrence": {
+    "number": 1,
+    "type": "week",
+    "last": false,
+    "value": "1",
+    "displayValue": "Preseason"
+   },
+   "ranks": [
+    {
+     "current": 1,
+     "points": 1741.0,
+     "firstPlaceVotes": 38,
+     "team": {
+      "id": "194",
+      "nickname": "Ohio State",
+      "location": "Ohio State",
+      "abbreviation": "OSU",
+      "groups": {
+       "id": "5",
+       "shortName": "Big Ten",
+       "parent": {
+        "id": "80",
+        "shortName": "FBS",
+        "isConference": false
+       },
+       "isConference": true
+      }
+     }
+    },
+    {
+     "current": 2,
+     "points": 1637.0,
+     "firstPlaceVotes": 6,
+     "team": {
+      "id": "2483",
+      "nickname": "Oregon",
+      "location": "Oregon",
+      "abbreviation": "ORE",
+      "groups": {
+       "id": "5",
+       "shortName": "Big Ten",
+       "parent": {
+        "id": "80",
+        "shortName": "FBS",
+        "isConference": false
+       },
+       "isConference": true
+      }
+     }
+    },
+    {
+     "current": 3,
+     "points": 1591.0,
+     "firstPlaceVotes": 7,
+     "team": {
+      "id": "61",
+      "nickname": "Georgia",
+      "location": "Georgia",
+      "abbreviation": "UGA",
+      "groups": {
+       "id": "8",
+       "shortName": "SEC",
+       "parent": {
+        "id": "80",
+        "shortName": "FBS",
+        "isConference": false
+       },
+       "isConference": true
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,234 @@
+{
+ "sports": [
+  {
+   "leagues": [
+    {
+     "teams": [
+      {
+       "team": {
+        "abbreviation": "ALA",
+        "alternateColor": "ffffff",
+        "color": "9e1b32",
+        "displayName": "Alabama Crimson Tide",
+        "id": "333",
+        "isActive": true,
+        "isAllStar": false,
+        "links": [
+         {
+          "href": "https://www.espn.com/college-football/team/_/id/333/alabama-crimson-tide",
+          "isExternal": false,
+          "isHidden": false,
+          "isPremium": false,
+          "language": "en-US",
+          "rel": [
+           "clubhouse",
+           "desktop",
+           "team"
+          ],
+          "shortText": "Clubhouse",
+          "text": "Clubhouse"
+         },
+         {
+          "href": "https://www.espn.com/college-football/team/roster/_/id/333",
+          "isExternal": false,
+          "isHidden": false,
+          "isPremium": false,
+          "language": "en-US",
+          "rel": [
+           "roster",
+           "desktop",
+           "team"
+          ],
+          "shortText": "Roster",
+          "text": "Roster"
+         },
+         {
+          "href": "https://www.espn.com/college-football/team/stats/_/id/333",
+          "isExternal": false,
+          "isHidden": false,
+          "isPremium": false,
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "team"
+          ],
+          "shortText": "Statistics",
+          "text": "Statistics"
+         },
+         {
+          "href": "https://www.espn.com/college-football/team/schedule/_/id/333",
+          "isExternal": false,
+          "isHidden": false,
+          "isPremium": false,
+          "language": "en-US",
+          "rel": [
+           "schedule",
+           "desktop",
+           "team"
+          ],
+          "shortText": "Schedule",
+          "text": "Schedule"
+         },
+         {
+          "href": "https://www.vividseats.com/alabama-crimson-tide-football-tickets--sports-ncaa-football/performer/988?wsUser=717",
+          "isExternal": true,
+          "isHidden": false,
+          "isPremium": false,
+          "language": "en-US",
+          "rel": [
+           "tickets",
+           "desktop",
+           "team"
+          ],
+          "shortText": "Tickets",
+          "text": "Tickets"
+         }
+        ],
+        "location": "Alabama",
+        "logos": [
+         {
+          "alt": "",
+          "height": 500,
+          "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/333.png",
+          "rel": [
+           "full",
+           "default"
+          ],
+          "width": 500
+         },
+         {
+          "alt": "",
+          "height": 500,
+          "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/333.png",
+          "rel": [
+           "full",
+           "dark"
+          ],
+          "width": 500
+         }
+        ],
+        "name": "Crimson Tide",
+        "nickname": "Alabama",
+        "shortDisplayName": "Alabama",
+        "slug": "alabama-crimson-tide",
+        "uid": "s:20~l:23~t:333"
+       }
+      },
+      {
+       "team": {
+        "abbreviation": "UGA",
+        "alternateColor": "2c2a29",
+        "color": "ba0c2f",
+        "displayName": "Georgia Bulldogs",
+        "id": "61",
+        "isActive": true,
+        "isAllStar": false,
+        "links": [
+         {
+          "href": "https://www.espn.com/college-football/team/_/id/61/georgia-bulldogs",
+          "isExternal": false,
+          "isHidden": false,
+          "isPremium": false,
+          "language": "en-US",
+          "rel": [
+           "clubhouse",
+           "desktop",
+           "team"
+          ],
+          "shortText": "Clubhouse",
+          "text": "Clubhouse"
+         },
+         {
+          "href": "https://www.espn.com/college-football/team/roster/_/id/61",
+          "isExternal": false,
+          "isHidden": false,
+          "isPremium": false,
+          "language": "en-US",
+          "rel": [
+           "roster",
+           "desktop",
+           "team"
+          ],
+          "shortText": "Roster",
+          "text": "Roster"
+         },
+         {
+          "href": "https://www.espn.com/college-football/team/stats/_/id/61",
+          "isExternal": false,
+          "isHidden": false,
+          "isPremium": false,
+          "language": "en-US",
+          "rel": [
+           "stats",
+           "desktop",
+           "team"
+          ],
+          "shortText": "Statistics",
+          "text": "Statistics"
+         },
+         {
+          "href": "https://www.espn.com/college-football/team/schedule/_/id/61",
+          "isExternal": false,
+          "isHidden": false,
+          "isPremium": false,
+          "language": "en-US",
+          "rel": [
+           "schedule",
+           "desktop",
+           "team"
+          ],
+          "shortText": "Schedule",
+          "text": "Schedule"
+         },
+         {
+          "href": "https://www.vividseats.com/georgia-bulldogs-football-tickets--sports-ncaa-football/performer/320?wsUser=717",
+          "isExternal": true,
+          "isHidden": false,
+          "isPremium": false,
+          "language": "en-US",
+          "rel": [
+           "tickets",
+           "desktop",
+           "team"
+          ],
+          "shortText": "Tickets",
+          "text": "Tickets"
+         }
+        ],
+        "location": "Georgia",
+        "logos": [
+         {
+          "alt": "",
+          "height": 500,
+          "href": "https://a.espncdn.com/i/teamlogos/ncaa/500/61.png",
+          "rel": [
+           "full",
+           "default"
+          ],
+          "width": 500
+         },
+         {
+          "alt": "",
+          "height": 500,
+          "href": "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/61.png",
+          "rel": [
+           "full",
+           "dark"
+          ],
+          "width": 500
+         }
+        ],
+        "name": "Bulldogs",
+        "nickname": "Georgia",
+        "shortDisplayName": "Georgia",
+        "slug": "georgia-bulldogs",
+        "uid": "s:20~l:23~t:61"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
