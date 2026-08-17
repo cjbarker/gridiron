@@ -1,0 +1,6 @@
+{
+ "count": 1,
+ "items": [
+  {"$ref": "http://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/2023/teams/61?lang=en&region=us"}
+ ]
+}

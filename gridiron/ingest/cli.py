@@ -44,6 +44,16 @@ from gridiron.ingest.sources import (
 def _build_source(args: argparse.Namespace) -> DataSource:
     if args.fixtures:
         return FixtureSource(args.fixtures)
+    source = getattr(args, "source", "cfbd")
+    if source in ("espn", "hybrid"):
+        # Imported lazily so the ESPN path has no import cost for CFBD-only runs.
+        from gridiron.ingest.espn import ESPNSource, HybridSource
+
+        core = ESPNSource(years=getattr(args, "_years", None))
+        if source == "espn":
+            return core
+        # CFBD (for the four extras) is built lazily — no key needed unless used.
+        return HybridSource(core=core, extras_factory=lambda: CFBDSource(api_key=args.api_key))
     # Offline parquet backfill: no API source needed when synthesizing games.
     if args.plays_source == "parquet" and args.stub_games and not args.api_key:
         return EmptySource()
@@ -114,6 +124,13 @@ def main(argv: list[str] | None = None) -> int:
         "--init-db", action="store_true", help="Create tables before ingesting."
     )
     parser.add_argument(
+        "--source",
+        choices=("cfbd", "espn", "hybrid"),
+        default="cfbd",
+        help="Data source: CFBD (default, needs key), ESPN (key-free core), or hybrid "
+        "(ESPN core + CFBD for recruiting/transfers/coaches/lines).",
+    )
+    parser.add_argument(
         "--refresh",
         action="store_true",
         help="Idempotently (re-)ingest the current season (for cron). Overrides --year.",
@@ -132,8 +149,9 @@ def main(argv: list[str] | None = None) -> int:
         create_all()
 
     loader = functools.partial(load_pbp_parquet, base_url=args.parquet_base_url)
-    source = _build_source(args)
     years = _years(args)
+    args._years = years  # lets an ESPN source pre-populate venues for these seasons
+    source = _build_source(args)
     reporter = ProgressReporter(years, enabled=False if args.quiet else None)
     for year in years:
         report = ingest_season(

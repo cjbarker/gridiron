@@ -431,7 +431,13 @@ def _ingest_rankings(source: DataSource, year: int, session: Session, report: In
     if not records:
         return
     session.query(Ranking).filter(Ranking.season == year).delete(synchronize_session=False)
-    rows = tf.flatten_rankings(year, records)
-    session.add_all(rows)
-    report.bump("rankings", len(rows))
+    # Some CFBD polls (e.g. lower-division coaches polls) list a team twice in one
+    # week; dedup on the table's unique key so the batch insert can't collide.
+    rows = _dedup(
+        tf.flatten_rankings(year, records),
+        key=lambda r: (r.week, r.season_type, r.poll, r.team),
+    )
+    for row in rows:
+        session.add(row)
+        report.bump("rankings")
     session.flush()

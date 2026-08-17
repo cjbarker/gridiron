@@ -92,7 +92,7 @@ recruiting/transfers) needs **no key**.
 | `player_game_stats(year, wk, st)` | `_summary(event).boxscore.players[]` | per team, per stat category (`passing`/`rushing`/…) with `labels` + athlete rows → CFBD `/games/players` nested shape |
 | `team_game_stats(year, wk, st)` | `_summary(event).boxscore.teams[]` | `statistics[]` (`name`,`displayValue`) → CFBD `/games/teams` nested shape |
 | `rankings(year)` | `/rankings` per week | polls→`{week, seasonType, polls:[{poll:name, ranks:[{rank:current, school, conference, points, firstPlaceVotes}]}]}` |
-| `rosters(year)` | `/teams/{id}/roster?season=Y` per FBS team | flatten `athletes[].items[]`; `id, fullName, jersey, position, weight, height`, carry `team` |
+| `rosters(year)` | `/teams/{id}/roster` per FBS team | **current season only** (ESPN serves no historical rosters); past years return `[]`. Flatten `athletes[].items[]` |
 | `weeks(year, st)` | derived from cached scoreboards / season calendar | distinct week numbers that have events |
 | `recruiting_teams`, `transfers`, `coaches`, `betting_lines` | **CFBD** (via HybridSource) | ESPNSource returns `[]` for these |
 
@@ -124,7 +124,22 @@ uv run gridiron-ingest --source hybrid --start 2014 --end 2024 --plays-source pa
 uv run gridiron-ingest --source espn --year 2023 --no-recruiting --no-coaches --no-lines
 ```
 
-## Open questions / follow-ups (out of scope for this spec)
+## Resolved during implementation
 
-- ESPN teams-endpoint FBS filtering (`groups=80` vs core-API classification) — settle during impl.
-- Season week-count discovery (calendar vs. probing) — settle during impl with a fixture.
+- **FBS team filtering:** the site `/teams` endpoint ignores `groups=80` (returns all 759
+  divisions). Resolved via the core API `seasons/{year}/types/2/groups/80/teams` (145 FBS
+  `$ref`s), whose ids filter the `/teams` metadata down to FBS (133 for 2023). Falls back to
+  unfiltered if that list is unavailable.
+- **Season week discovery:** probe weeks 1..16 (regular) / 1..5 (postseason), stop after two
+  consecutive empty weeks; dedup events by id. No calendar dependency.
+- **Rosters:** current season only (ESPN's roster endpoint returns nothing for past seasons and
+  the historical workaround is a per-player fan-out); past years return `[]` — never fabricated.
+- **Rankings weeks:** ESPN's `/rankings` may not honor the `week` param for past seasons, so the
+  actual week is read from each poll's `occurrence.number` and records are deduped by it; a
+  historical backfill may capture fewer weeks than CFBD. Acceptable, documented.
+
+## Verification
+
+Live end-to-end ingest of two real 2023 games via `ESPNSource` into a throwaway DB produced
+correct games/drives/plays/box-scores/rankings/venues (e.g. `401523986` SJSU 28 @ USC 56, drive
+offense/defense resolved, play clock parsed). 195 tests pass.

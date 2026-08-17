@@ -1,0 +1,93 @@
+{
+ "season": {
+  "year": 2026,
+  "displayName": "2026",
+  "type": 1,
+  "name": "Preseason"
+ },
+ "team": {
+  "id": "61",
+  "displayName": "Georgia Bulldogs",
+  "location": "Georgia"
+ },
+ "athletes": [
+  {
+   "position": "offense",
+   "items": [
+    {
+     "id": "5141371",
+     "firstName": "Ethan",
+     "lastName": "Barbour",
+     "fullName": "Ethan Barbour",
+     "jersey": "9",
+     "weight": 235.0,
+     "height": 75.0,
+     "position": {
+      "abbreviation": "TE",
+      "name": "Tight End"
+     },
+     "birthPlace": {
+      "city": "Alpharetta",
+      "state": "GA"
+     }
+    },
+    {
+     "id": "5279260",
+     "firstName": "Bryson",
+     "lastName": "Beaver",
+     "fullName": "Bryson Beaver",
+     "jersey": "18",
+     "weight": 205.0,
+     "height": 75.0,
+     "position": {
+      "abbreviation": "QB",
+      "name": "Quarterback"
+     },
+     "birthPlace": {
+      "city": "Murrieta",
+      "state": "CA"
+     }
+    }
+   ]
+  },
+  {
+   "position": "defense",
+   "items": [
+    {
+     "id": "5245168",
+     "firstName": "Nick",
+     "lastName": "Abrams II",
+     "fullName": "Nick Abrams II",
+     "jersey": "42",
+     "weight": 225.0,
+     "height": 74.0,
+     "position": {
+      "abbreviation": "LB",
+      "name": "Linebacker"
+     },
+     "birthPlace": {
+      "city": "Baltimore",
+      "state": "MD"
+     }
+    },
+    {
+     "id": "5160178",
+     "firstName": "Clinton",
+     "lastName": "Barlow",
+     "fullName": "Clinton Barlow",
+     "jersey": "67",
+     "weight": 315.0,
+     "height": 76.0,
+     "position": {
+      "abbreviation": "DL",
+      "name": "Defensive Lineman"
+     },
+     "birthPlace": {
+      "city": "Charlotte",
+      "state": "NC"
+     }
+    }
+   ]
+  }
+ ]
+}
