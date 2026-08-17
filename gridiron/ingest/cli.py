@@ -31,6 +31,7 @@ import sys
 
 from gridiron.db.init_db import create_all
 from gridiron.ingest.pipeline import current_season, ingest_season
+from gridiron.ingest.progress import ProgressReporter
 from gridiron.ingest.sources import (
     CFBDSource,
     DataSource,
@@ -117,6 +118,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Idempotently (re-)ingest the current season (for cron). Overrides --year.",
     )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress the live progress bar (auto-off already when not a TTY).",
+    )
     args = parser.parse_args(argv)
 
     if args.inspect_parquet:
@@ -127,7 +133,9 @@ def main(argv: list[str] | None = None) -> int:
 
     loader = functools.partial(load_pbp_parquet, base_url=args.parquet_base_url)
     source = _build_source(args)
-    for year in _years(args):
+    years = _years(args)
+    reporter = ProgressReporter(years, enabled=False if args.quiet else None)
+    for year in years:
         report = ingest_season(
             source,
             year,
@@ -139,8 +147,10 @@ def main(argv: list[str] | None = None) -> int:
             plays_source=args.plays_source,
             parquet_loader=loader if args.plays_source == "parquet" else None,
             stub_games=args.stub_games,
+            progress=reporter,
         )
-        print(report)
+        # Clears the live bar (if drawn) and prints the season's final counts.
+        reporter.finish_year(str(report))
     return 0
 
 

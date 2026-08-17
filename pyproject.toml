@@ -18,6 +18,13 @@ dependencies = [
     "jinja2>=3.1",
     "plotly>=5.20",
     "pyarrow>=15.0",
+    # Auth: password hashing (Argon2), Google OAuth, form parsing, email validation,
+    # and session-cookie signing (Starlette SessionMiddleware dependency).
+    "authlib>=1.7",
+    "pwdlib[argon2]>=0.2",
+    "python-multipart>=0.0.9",
+    "email-validator>=2.0",
+    "itsdangerous>=2.0",
 ]
 
 # Optional extras enable production/bulk paths (the app runs offline without them):
@@ -38,6 +45,7 @@ dev = ["pytest>=8.0", "ruff>=0.4", "scikit-learn>=1.4"]
 gridiron-ingest = "gridiron.ingest.cli:main"
 gridiron-refresh = "gridiron.ingest.cli:refresh_main"
 gridiron-initdb = "gridiron.db.init_db:main"
+gridiron-admin = "gridiron.auth.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]

@@ -3,7 +3,9 @@
 {% block content %}
 <div class="card">
   <p class="muted"><a href="/teams?season={{ season }}">← {{ season }} teams</a></p>
-  <h2>{{ team }} <span class="muted">{{ season }}</span></h2>
+  <h2>{{ team }} <span class="muted">{{ season }}</span>
+    {% with fav_kind="team", fav_ref=team %}{% include "_favorite_button.html" %}{% endwith %}
+  </h2>
   <div class="stat-grid">
     <div class="stat"><div class="n">{{ summary.record }}</div><div class="l">Record</div></div>
     <div class="stat"><div class="n">{{ summary.points_for }}</div><div class="l">Points for</div></div>

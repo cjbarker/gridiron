@@ -47,6 +47,28 @@ class IngestReport:
         return f"[{self.year}] {parts}"
 
 
+@dataclass
+class StageProgress:
+    """One progress signal from :func:`ingest_season`.
+
+    Emitted twice per stage: once with ``running=True`` just before the stage
+    starts (``completed`` = stages already finished this season) and once with
+    ``running=False`` right after it finishes (``completed`` = stages done,
+    including this one). ``report`` is the live, accumulating count of the season.
+    """
+
+    year: int
+    stage: str
+    completed: int
+    total: int
+    running: bool
+    report: IngestReport
+
+
+# Called for each :class:`StageProgress`; ``ingest_season`` runs it inline.
+ProgressCallback = Callable[[StageProgress], None]
+
+
 def ingest_season(
     source: DataSource,
     year: int,
@@ -60,6 +82,7 @@ def ingest_season(
     plays_source: str = "api",
     parquet_loader: Callable[[int], list[dict]] | None = None,
     stub_games: bool = False,
+    progress: ProgressCallback | None = None,
 ) -> IngestReport:
     """Ingest a full season into the DB. Returns counts of rows upserted.
 
@@ -67,33 +90,63 @@ def ingest_season(
     EPA/WP) instead of the CFBD ``/plays`` API. With ``stub_games=True`` the
     parquet step also synthesizes any missing games, so a backfill can run with no
     CFBD key at all.
+
+    ``progress`` is an optional callback invoked around each stage with a
+    :class:`StageProgress`; it drives the CLI's progress bar and is a no-op when
+    omitted.
     """
     report = IngestReport(year=year)
+    game_ids: set[int] = set()
     with session_scope() as session:
-        _ingest_reference(source, year, session, report)
-        if with_rosters:
-            _ingest_rosters(source, year, session, report)
-        game_ids: set[int] = set()
-        for st in season_types:
-            _ingest_games(source, year, st, session, report, game_ids)
-        for st in season_types:
-            _ingest_drives(source, year, st, session, report, game_ids)
-        if plays_source == "parquet":
-            _ingest_plays_parquet(
-                year, session, report, game_ids, loader=parquet_loader, stub_games=stub_games
-            )
-        else:
+
+        def _games() -> None:
             for st in season_types:
-                _ingest_plays(source, year, st, session, report, game_ids)
+                _ingest_games(source, year, st, session, report, game_ids)
+
+        def _drives() -> None:
+            for st in season_types:
+                _ingest_drives(source, year, st, session, report, game_ids)
+
+        def _plays() -> None:
+            if plays_source == "parquet":
+                _ingest_plays_parquet(
+                    year, session, report, game_ids, loader=parquet_loader, stub_games=stub_games
+                )
+            else:
+                for st in season_types:
+                    _ingest_plays(source, year, st, session, report, game_ids)
+
+        # Ordered, named stages. Optional ones are dropped up front so the
+        # progress total reflects the work that will actually run this season.
+        steps: list[tuple[str, Callable[[], None]]] = [
+            ("reference", lambda: _ingest_reference(source, year, session, report)),
+        ]
+        if with_rosters:
+            steps.append(("rosters", lambda: _ingest_rosters(source, year, session, report)))
+        steps.append(("games", _games))
+        steps.append(("drives", _drives))
+        steps.append(("plays", _plays))
         if with_stats:
-            _ingest_box_scores(source, year, season_types, session, report, game_ids)
+            steps.append(
+                ("box_scores", lambda: _ingest_box_scores(source, year, season_types, session, report, game_ids))
+            )
         if with_lines:
-            _ingest_betting_lines(source, year, season_types, session, report, game_ids)
+            steps.append(
+                ("betting_lines", lambda: _ingest_betting_lines(source, year, season_types, session, report, game_ids))
+            )
         if with_recruiting:
-            _ingest_recruiting(source, year, session, report)
+            steps.append(("recruiting", lambda: _ingest_recruiting(source, year, session, report)))
         if with_coaches:
-            _ingest_coaches(source, year, session, report)
-        _ingest_rankings(source, year, session, report)
+            steps.append(("coaches", lambda: _ingest_coaches(source, year, session, report)))
+        steps.append(("rankings", lambda: _ingest_rankings(source, year, session, report)))
+
+        total = len(steps)
+        for i, (name, run) in enumerate(steps):
+            if progress is not None:
+                progress(StageProgress(year, name, i, total, True, report))
+            run()
+            if progress is not None:
+                progress(StageProgress(year, name, i + 1, total, False, report))
     return report
 
 

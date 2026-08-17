@@ -5,6 +5,7 @@
   <p class="muted"><a href="/players">← Players</a> · <a href="/players/compare?a={{ profile.id }}{% if season %}&season={{ season }}{% endif %}">compare →</a></p>
   <h2>{{ profile.name }}
     {% if profile.jersey %}<span class="muted">#{{ profile.jersey }}</span>{% endif %}
+    {% with fav_kind="player", fav_ref=profile.id %}{% include "_favorite_button.html" %}{% endwith %}
   </h2>
   <p class="muted">
     {% if profile.position %}<span class="pill">{{ profile.position }}</span>{% endif %}

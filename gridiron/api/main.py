@@ -26,17 +26,22 @@ from functools import lru_cache
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from starlette.middleware.sessions import SessionMiddleware
 
 from gridiron.analytics import charts as ch
 from gridiron.analytics import predict as pred
 from gridiron.analytics import queries as q
 from gridiron.analytics.backtest import backtest_season
 from gridiron.analytics.filters import PlayFilter
+from gridiron.auth.favorites import is_favorited
+from gridiron.auth.favorites import router as favorites_router
+from gridiron.auth.routes import router as auth_router
+from gridiron.auth.security import RequiresLogin, current_user
+from gridiron.config import get_settings
 from gridiron.db.models import (
     Drive,
     Game,
@@ -46,11 +51,30 @@ from gridiron.db.models import (
     TeamGameStat,
 )
 from gridiron.db.session import get_db
+from gridiron.templating import templates
 
 _HERE = Path(__file__).resolve().parent.parent
-templates = Jinja2Templates(directory=str(_HERE / "web" / "templates"))
 
 app = FastAPI(title="Gridiron", description="College football stats & analysis")
+
+# Signed, HttpOnly session cookie carries the login (user_id) and CSRF token.
+_settings = get_settings()
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=_settings.session_secret(),
+    https_only=_settings.session_cookie_secure,
+    same_site="lax",
+)
+
+
+@app.exception_handler(RequiresLogin)
+async def _requires_login(request: Request, exc: RequiresLogin) -> RedirectResponse:
+    """Send anonymous users hitting a protected route to the login page."""
+    return RedirectResponse(url=f"/login?next={exc.next_url}", status_code=303)
+
+
+app.include_router(auth_router)
+app.include_router(favorites_router)
 
 _static = _HERE / "web" / "static"
 if _static.exists():
@@ -764,6 +788,7 @@ def page_team(
     distance_min: int | None = None,
     distance_max: int | None = None,
     db: Session = Depends(get_db),
+    user=Depends(current_user),
 ) -> HTMLResponse:
     season = _current_season(db, season)
     game_log = q.team_game_log(db, team, season) if season is not None else []
@@ -810,6 +835,7 @@ def page_team(
             "figures": figures,
             "filters": filters,
             "filters_active": any(filters.values()),
+            "is_favorite": is_favorited(db, user, "team", team),
         },
     )
 
@@ -832,7 +858,11 @@ def page_players(
 
 @app.get("/players/{player_id}", response_class=HTMLResponse)
 def page_player(
-    request: Request, player_id: int, season: int | None = None, db: Session = Depends(get_db)
+    request: Request,
+    player_id: int,
+    season: int | None = None,
+    db: Session = Depends(get_db),
+    user=Depends(current_user),
 ) -> HTMLResponse:
     profile = q.player_profile(db, player_id)
     if profile is None:
@@ -846,6 +876,7 @@ def page_player(
             "season_stats": q.player_season_stats(db, player_id, season),
             "game_log": q.player_game_log(db, player_id, season),
             "wpa": q.player_wpa(db, profile["name"], season) if profile.get("name") else None,
+            "is_favorite": is_favorited(db, user, "player", str(player_id)),
         },
     )
 

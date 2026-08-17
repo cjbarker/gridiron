@@ -1,0 +1,12 @@
+{# Favorite toggle. Expects: fav_kind, fav_ref, is_favorite (+ user/csrf_token from context). #}
+{% if user %}
+<form method="post" action="/favorites/{{ 'remove' if is_favorite else 'add' }}"
+      style="display:inline;margin:0 0 0 8px;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="kind" value="{{ fav_kind }}">
+  <input type="hidden" name="ref" value="{{ fav_ref }}">
+  <input type="hidden" name="next" value="{{ request.url.path }}">
+  <button type="submit" style="padding:4px 10px;font-size:13px;">
+    {{ '★ Saved' if is_favorite else '☆ Save' }}</button>
+</form>
+{% endif %}
